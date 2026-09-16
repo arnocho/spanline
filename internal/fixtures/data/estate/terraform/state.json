@@ -1,0 +1,91 @@
+{
+ "version": 4,
+ "terraform_version": "1.9.8",
+ "serial": 318,
+ "lineage": "8f2b1c44-0000-4a1b-9c3d-77aa11bb22cc",
+ "resources": [
+  {
+   "mode": "managed",
+   "type": "azurerm_kubernetes_cluster",
+   "name": "main",
+   "provider": "provider[\"registry.terraform.io/hashicorp/azurerm\"]",
+   "instances": [
+    {
+     "attributes": {
+      "name": "aks-prod-weu",
+      "resource_group_name": "rg-platform-prod",
+      "kubernetes_version": "1.31.6"
+     }
+    }
+   ]
+  },
+  {
+   "mode": "managed",
+   "type": "azurerm_kubernetes_cluster_node_pool",
+   "name": "apps",
+   "provider": "provider[\"registry.terraform.io/hashicorp/azurerm\"]",
+   "instances": [
+    {
+     "attributes": {
+      "name": "apps",
+      "vm_size": "Standard_D4s_v5",
+      "node_count": 6,
+      "zones": [
+       "1",
+       "2",
+       "3"
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "mode": "managed",
+   "type": "azurerm_kubernetes_cluster_node_pool",
+   "name": "data",
+   "provider": "provider[\"registry.terraform.io/hashicorp/azurerm\"]",
+   "instances": [
+    {
+     "attributes": {
+      "name": "data",
+      "vm_size": "Standard_D8s_v5",
+      "node_count": 1,
+      "zones": [
+       "2"
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "mode": "managed",
+   "type": "helm_release",
+   "name": "payments",
+   "provider": "provider[\"registry.terraform.io/hashicorp/helm\"]",
+   "instances": [
+    {
+     "attributes": {
+      "name": "payments",
+      "namespace": "payments",
+      "chart": "payments",
+      "version": "1.4.2"
+     }
+    }
+   ]
+  },
+  {
+   "mode": "managed",
+   "type": "azurerm_public_ip",
+   "name": "unused",
+   "provider": "provider[\"registry.terraform.io/hashicorp/azurerm\"]",
+   "instances": [
+    {
+     "attributes": {
+      "name": "pip-legacy-egress",
+      "ip_address": "20.4.5.6"
+     }
+    }
+   ]
+  }
+ ]
+}

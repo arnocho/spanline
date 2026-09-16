@@ -1,0 +1,486 @@
+{
+ "apiVersion": "v1",
+ "kind": "List",
+ "items": [
+  {
+   "metadata": {
+    "name": "cart-3e7a9-0",
+    "namespace": "payments",
+    "uid": "uid-pod-cart-3e7a9-0",
+    "creationTimestamp": "2026-09-16T02:51:30Z",
+    "labels": {
+     "app": "cart",
+     "pod-template-hash": "3e7a9"
+    },
+    "annotations": {},
+    "ownerReferences": [
+     {
+      "kind": "ReplicaSet",
+      "name": "cart-3e7a9",
+      "uid": "uid-rs-cart-3e7a9"
+     }
+    ]
+   },
+   "spec": {
+    "nodeName": "aks-apps-10000",
+    "containers": [
+     {
+      "name": "cart",
+      "image": "registry.internal/payments/cart:4.2.0",
+      "resources": {
+       "requests": {
+        "cpu": "200m",
+        "memory": "256Mi"
+       },
+       "limits": {
+        "cpu": "500m",
+        "memory": "512Mi"
+       }
+      }
+     }
+    ],
+    "volumes": []
+   },
+   "status": {
+    "phase": "Running",
+    "startTime": "2026-09-16T02:51:30Z",
+    "conditions": [
+     {
+      "type": "Ready",
+      "status": "False",
+      "lastTransitionTime": "2026-09-16T03:09:50Z",
+      "reason": "ContainersNotReady"
+     },
+     {
+      "type": "ContainersReady",
+      "status": "False",
+      "lastTransitionTime": "2026-09-16T03:09:50Z"
+     }
+    ],
+    "containerStatuses": [
+     {
+      "name": "cart",
+      "ready": false,
+      "restartCount": 4,
+      "image": "registry.internal/payments/cart:4.2.0",
+      "imageID": "registry.internal/payments/cart@sha256:cc33",
+      "state": {
+       "waiting": {
+        "reason": "CrashLoopBackOff",
+        "message": "back-off 40s restarting failed container"
+       }
+      },
+      "lastState": {
+       "terminated": {
+        "reason": "OOMKilled",
+        "exitCode": 137,
+        "startedAt": "2026-09-16T02:51:30Z",
+        "finishedAt": "2026-09-16T03:09:40Z"
+       }
+      }
+     }
+    ]
+   }
+  },
+  {
+   "metadata": {
+    "name": "cart-3e7a9-1",
+    "namespace": "payments",
+    "uid": "uid-pod-cart-3e7a9-1",
+    "creationTimestamp": "2026-09-16T02:51:30Z",
+    "labels": {
+     "app": "cart",
+     "pod-template-hash": "3e7a9"
+    },
+    "annotations": {},
+    "ownerReferences": [
+     {
+      "kind": "ReplicaSet",
+      "name": "cart-3e7a9",
+      "uid": "uid-rs-cart-3e7a9"
+     }
+    ]
+   },
+   "spec": {
+    "nodeName": "aks-apps-10001",
+    "containers": [
+     {
+      "name": "cart",
+      "image": "registry.internal/payments/cart:4.2.0",
+      "resources": {
+       "requests": {
+        "cpu": "200m",
+        "memory": "256Mi"
+       },
+       "limits": {
+        "cpu": "500m",
+        "memory": "512Mi"
+       }
+      }
+     }
+    ],
+    "volumes": []
+   },
+   "status": {
+    "phase": "Running",
+    "startTime": "2026-09-16T02:51:30Z",
+    "conditions": [
+     {
+      "type": "Ready",
+      "status": "False",
+      "lastTransitionTime": "2026-09-16T03:09:50Z",
+      "reason": "ContainersNotReady"
+     },
+     {
+      "type": "ContainersReady",
+      "status": "False",
+      "lastTransitionTime": "2026-09-16T03:09:50Z"
+     }
+    ],
+    "containerStatuses": [
+     {
+      "name": "cart",
+      "ready": false,
+      "restartCount": 4,
+      "image": "registry.internal/payments/cart:4.2.0",
+      "imageID": "registry.internal/payments/cart@sha256:cc33",
+      "state": {
+       "waiting": {
+        "reason": "CrashLoopBackOff",
+        "message": "back-off 40s restarting failed container"
+       }
+      },
+      "lastState": {
+       "terminated": {
+        "reason": "OOMKilled",
+        "exitCode": 137,
+        "startedAt": "2026-09-16T02:51:30Z",
+        "finishedAt": "2026-09-16T03:09:41Z"
+       }
+      }
+     }
+    ]
+   }
+  },
+  {
+   "metadata": {
+    "name": "cart-3e7a9-2",
+    "namespace": "payments",
+    "uid": "uid-pod-cart-3e7a9-2",
+    "creationTimestamp": "2026-09-16T02:51:30Z",
+    "labels": {
+     "app": "cart",
+     "pod-template-hash": "3e7a9"
+    },
+    "annotations": {},
+    "ownerReferences": [
+     {
+      "kind": "ReplicaSet",
+      "name": "cart-3e7a9",
+      "uid": "uid-rs-cart-3e7a9"
+     }
+    ]
+   },
+   "spec": {
+    "nodeName": "aks-apps-10002",
+    "containers": [
+     {
+      "name": "cart",
+      "image": "registry.internal/payments/cart:4.2.0",
+      "resources": {
+       "requests": {
+        "cpu": "200m",
+        "memory": "256Mi"
+       },
+       "limits": {
+        "cpu": "500m",
+        "memory": "512Mi"
+       }
+      }
+     }
+    ],
+    "volumes": []
+   },
+   "status": {
+    "phase": "Running",
+    "startTime": "2026-09-16T02:51:30Z",
+    "conditions": [
+     {
+      "type": "Ready",
+      "status": "False",
+      "lastTransitionTime": "2026-09-16T03:09:50Z",
+      "reason": "ContainersNotReady"
+     },
+     {
+      "type": "ContainersReady",
+      "status": "False",
+      "lastTransitionTime": "2026-09-16T03:09:50Z"
+     }
+    ],
+    "containerStatuses": [
+     {
+      "name": "cart",
+      "ready": false,
+      "restartCount": 4,
+      "image": "registry.internal/payments/cart:4.2.0",
+      "imageID": "registry.internal/payments/cart@sha256:cc33",
+      "state": {
+       "waiting": {
+        "reason": "CrashLoopBackOff",
+        "message": "back-off 40s restarting failed container"
+       }
+      },
+      "lastState": {
+       "terminated": {
+        "reason": "OOMKilled",
+        "exitCode": 137,
+        "startedAt": "2026-09-16T02:51:30Z",
+        "finishedAt": "2026-09-16T03:09:42Z"
+       }
+      }
+     }
+    ]
+   }
+  },
+  {
+   "metadata": {
+    "name": "cart-3e7a9-3",
+    "namespace": "payments",
+    "uid": "uid-pod-cart-3e7a9-3",
+    "creationTimestamp": "2026-09-16T02:51:30Z",
+    "labels": {
+     "app": "cart",
+     "pod-template-hash": "3e7a9"
+    },
+    "annotations": {},
+    "ownerReferences": [
+     {
+      "kind": "ReplicaSet",
+      "name": "cart-3e7a9",
+      "uid": "uid-rs-cart-3e7a9"
+     }
+    ]
+   },
+   "spec": {
+    "nodeName": "aks-apps-10003",
+    "containers": [
+     {
+      "name": "cart",
+      "image": "registry.internal/payments/cart:4.2.0",
+      "resources": {
+       "requests": {
+        "cpu": "200m",
+        "memory": "256Mi"
+       },
+       "limits": {
+        "cpu": "500m",
+        "memory": "512Mi"
+       }
+      }
+     }
+    ],
+    "volumes": []
+   },
+   "status": {
+    "phase": "Running",
+    "startTime": "2026-09-16T02:51:30Z",
+    "conditions": [
+     {
+      "type": "Ready",
+      "status": "False",
+      "lastTransitionTime": "2026-09-16T03:09:50Z",
+      "reason": "ContainersNotReady"
+     },
+     {
+      "type": "ContainersReady",
+      "status": "False",
+      "lastTransitionTime": "2026-09-16T03:09:50Z"
+     }
+    ],
+    "containerStatuses": [
+     {
+      "name": "cart",
+      "ready": false,
+      "restartCount": 4,
+      "image": "registry.internal/payments/cart:4.2.0",
+      "imageID": "registry.internal/payments/cart@sha256:cc33",
+      "state": {
+       "waiting": {
+        "reason": "CrashLoopBackOff",
+        "message": "back-off 40s restarting failed container"
+       }
+      },
+      "lastState": {
+       "terminated": {
+        "reason": "OOMKilled",
+        "exitCode": 137,
+        "startedAt": "2026-09-16T02:51:30Z",
+        "finishedAt": "2026-09-16T03:09:43Z"
+       }
+      }
+     }
+    ]
+   }
+  },
+  {
+   "metadata": {
+    "name": "cart-3e7a9-4",
+    "namespace": "payments",
+    "uid": "uid-pod-cart-3e7a9-4",
+    "creationTimestamp": "2026-09-16T02:51:30Z",
+    "labels": {
+     "app": "cart",
+     "pod-template-hash": "3e7a9"
+    },
+    "annotations": {},
+    "ownerReferences": [
+     {
+      "kind": "ReplicaSet",
+      "name": "cart-3e7a9",
+      "uid": "uid-rs-cart-3e7a9"
+     }
+    ]
+   },
+   "spec": {
+    "nodeName": "aks-apps-10004",
+    "containers": [
+     {
+      "name": "cart",
+      "image": "registry.internal/payments/cart:4.2.0",
+      "resources": {
+       "requests": {
+        "cpu": "200m",
+        "memory": "256Mi"
+       },
+       "limits": {
+        "cpu": "500m",
+        "memory": "512Mi"
+       }
+      }
+     }
+    ],
+    "volumes": []
+   },
+   "status": {
+    "phase": "Running",
+    "startTime": "2026-09-16T02:51:30Z",
+    "conditions": [
+     {
+      "type": "Ready",
+      "status": "False",
+      "lastTransitionTime": "2026-09-16T03:09:50Z",
+      "reason": "ContainersNotReady"
+     },
+     {
+      "type": "ContainersReady",
+      "status": "False",
+      "lastTransitionTime": "2026-09-16T03:09:50Z"
+     }
+    ],
+    "containerStatuses": [
+     {
+      "name": "cart",
+      "ready": false,
+      "restartCount": 4,
+      "image": "registry.internal/payments/cart:4.2.0",
+      "imageID": "registry.internal/payments/cart@sha256:cc33",
+      "state": {
+       "waiting": {
+        "reason": "CrashLoopBackOff",
+        "message": "back-off 40s restarting failed container"
+       }
+      },
+      "lastState": {
+       "terminated": {
+        "reason": "OOMKilled",
+        "exitCode": 137,
+        "startedAt": "2026-09-16T02:51:30Z",
+        "finishedAt": "2026-09-16T03:09:44Z"
+       }
+      }
+     }
+    ]
+   }
+  },
+  {
+   "metadata": {
+    "name": "cart-3e7a9-5",
+    "namespace": "payments",
+    "uid": "uid-pod-cart-3e7a9-5",
+    "creationTimestamp": "2026-09-16T02:51:30Z",
+    "labels": {
+     "app": "cart",
+     "pod-template-hash": "3e7a9"
+    },
+    "annotations": {},
+    "ownerReferences": [
+     {
+      "kind": "ReplicaSet",
+      "name": "cart-3e7a9",
+      "uid": "uid-rs-cart-3e7a9"
+     }
+    ]
+   },
+   "spec": {
+    "nodeName": "aks-apps-10005",
+    "containers": [
+     {
+      "name": "cart",
+      "image": "registry.internal/payments/cart:4.2.0",
+      "resources": {
+       "requests": {
+        "cpu": "200m",
+        "memory": "256Mi"
+       },
+       "limits": {
+        "cpu": "500m",
+        "memory": "512Mi"
+       }
+      }
+     }
+    ],
+    "volumes": []
+   },
+   "status": {
+    "phase": "Running",
+    "startTime": "2026-09-16T02:51:30Z",
+    "conditions": [
+     {
+      "type": "Ready",
+      "status": "False",
+      "lastTransitionTime": "2026-09-16T03:09:50Z",
+      "reason": "ContainersNotReady"
+     },
+     {
+      "type": "ContainersReady",
+      "status": "False",
+      "lastTransitionTime": "2026-09-16T03:09:50Z"
+     }
+    ],
+    "containerStatuses": [
+     {
+      "name": "cart",
+      "ready": false,
+      "restartCount": 4,
+      "image": "registry.internal/payments/cart:4.2.0",
+      "imageID": "registry.internal/payments/cart@sha256:cc33",
+      "state": {
+       "waiting": {
+        "reason": "CrashLoopBackOff",
+        "message": "back-off 40s restarting failed container"
+       }
+      },
+      "lastState": {
+       "terminated": {
+        "reason": "OOMKilled",
+        "exitCode": 137,
+        "startedAt": "2026-09-16T02:51:30Z",
+        "finishedAt": "2026-09-16T03:09:45Z"
+       }
+      }
+     }
+    ]
+   }
+  }
+ ]
+}

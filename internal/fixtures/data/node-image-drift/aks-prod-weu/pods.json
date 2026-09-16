@@ -1,0 +1,441 @@
+{
+ "apiVersion": "v1",
+ "kind": "List",
+ "items": [
+  {
+   "metadata": {
+    "name": "api-8f2c1-n0",
+    "namespace": "payments",
+    "uid": "uid-pod-api-8f2c1-n0",
+    "creationTimestamp": "2026-09-16T02:30:00Z",
+    "labels": {
+     "app": "api",
+     "pod-template-hash": "8f2c1"
+    },
+    "annotations": {},
+    "ownerReferences": [
+     {
+      "kind": "ReplicaSet",
+      "name": "api-8f2c1",
+      "uid": "uid-rs-api-8f2c1"
+     }
+    ]
+   },
+   "spec": {
+    "nodeName": "aks-apps-10000",
+    "containers": [
+     {
+      "name": "api",
+      "image": "registry.internal/payments/api:2.4.0",
+      "resources": {
+       "requests": {
+        "cpu": "200m",
+        "memory": "256Mi"
+       },
+       "limits": {
+        "cpu": "500m",
+        "memory": "512Mi"
+       }
+      }
+     }
+    ],
+    "volumes": []
+   },
+   "status": {
+    "phase": "Running",
+    "startTime": "2026-09-16T02:30:00Z",
+    "conditions": [
+     {
+      "type": "Ready",
+      "status": "False",
+      "lastTransitionTime": "2026-09-16T02:35:00Z",
+      "reason": "ContainersNotReady"
+     },
+     {
+      "type": "ContainersReady",
+      "status": "False",
+      "lastTransitionTime": "2026-09-16T02:35:00Z"
+     }
+    ],
+    "containerStatuses": [
+     {
+      "name": "api",
+      "ready": false,
+      "restartCount": 6,
+      "image": "registry.internal/payments/api:2.4.0",
+      "imageID": "registry.internal/payments/api@sha256:bb22",
+      "state": {
+       "waiting": {
+        "reason": "CrashLoopBackOff",
+        "message": "back-off 40s restarting failed container"
+       }
+      },
+      "lastState": {}
+     }
+    ]
+   }
+  },
+  {
+   "metadata": {
+    "name": "api-8f2c1-n1",
+    "namespace": "payments",
+    "uid": "uid-pod-api-8f2c1-n1",
+    "creationTimestamp": "2026-09-16T02:30:00Z",
+    "labels": {
+     "app": "api",
+     "pod-template-hash": "8f2c1"
+    },
+    "annotations": {},
+    "ownerReferences": [
+     {
+      "kind": "ReplicaSet",
+      "name": "api-8f2c1",
+      "uid": "uid-rs-api-8f2c1"
+     }
+    ]
+   },
+   "spec": {
+    "nodeName": "aks-apps-10001",
+    "containers": [
+     {
+      "name": "api",
+      "image": "registry.internal/payments/api:2.4.0",
+      "resources": {
+       "requests": {
+        "cpu": "200m",
+        "memory": "256Mi"
+       },
+       "limits": {
+        "cpu": "500m",
+        "memory": "512Mi"
+       }
+      }
+     }
+    ],
+    "volumes": []
+   },
+   "status": {
+    "phase": "Running",
+    "startTime": "2026-09-16T02:30:00Z",
+    "conditions": [
+     {
+      "type": "Ready",
+      "status": "False",
+      "lastTransitionTime": "2026-09-16T02:35:00Z",
+      "reason": "ContainersNotReady"
+     },
+     {
+      "type": "ContainersReady",
+      "status": "False",
+      "lastTransitionTime": "2026-09-16T02:35:00Z"
+     }
+    ],
+    "containerStatuses": [
+     {
+      "name": "api",
+      "ready": false,
+      "restartCount": 6,
+      "image": "registry.internal/payments/api:2.4.0",
+      "imageID": "registry.internal/payments/api@sha256:bb22",
+      "state": {
+       "waiting": {
+        "reason": "CrashLoopBackOff",
+        "message": "back-off 40s restarting failed container"
+       }
+      },
+      "lastState": {}
+     }
+    ]
+   }
+  },
+  {
+   "metadata": {
+    "name": "api-8f2c1-n2",
+    "namespace": "payments",
+    "uid": "uid-pod-api-8f2c1-n2",
+    "creationTimestamp": "2026-09-16T02:30:00Z",
+    "labels": {
+     "app": "api",
+     "pod-template-hash": "8f2c1"
+    },
+    "annotations": {},
+    "ownerReferences": [
+     {
+      "kind": "ReplicaSet",
+      "name": "api-8f2c1",
+      "uid": "uid-rs-api-8f2c1"
+     }
+    ]
+   },
+   "spec": {
+    "nodeName": "aks-apps-10002",
+    "containers": [
+     {
+      "name": "api",
+      "image": "registry.internal/payments/api:2.4.0",
+      "resources": {
+       "requests": {
+        "cpu": "200m",
+        "memory": "256Mi"
+       },
+       "limits": {
+        "cpu": "500m",
+        "memory": "512Mi"
+       }
+      }
+     }
+    ],
+    "volumes": []
+   },
+   "status": {
+    "phase": "Running",
+    "startTime": "2026-09-16T02:30:00Z",
+    "conditions": [
+     {
+      "type": "Ready",
+      "status": "False",
+      "lastTransitionTime": "2026-09-16T02:35:00Z",
+      "reason": "ContainersNotReady"
+     },
+     {
+      "type": "ContainersReady",
+      "status": "False",
+      "lastTransitionTime": "2026-09-16T02:35:00Z"
+     }
+    ],
+    "containerStatuses": [
+     {
+      "name": "api",
+      "ready": false,
+      "restartCount": 6,
+      "image": "registry.internal/payments/api:2.4.0",
+      "imageID": "registry.internal/payments/api@sha256:bb22",
+      "state": {
+       "waiting": {
+        "reason": "CrashLoopBackOff",
+        "message": "back-off 40s restarting failed container"
+       }
+      },
+      "lastState": {}
+     }
+    ]
+   }
+  },
+  {
+   "metadata": {
+    "name": "api-8f2c1-h3",
+    "namespace": "payments",
+    "uid": "uid-pod-api-8f2c1-h3",
+    "creationTimestamp": "2026-09-16T01:05:00Z",
+    "labels": {
+     "app": "api",
+     "pod-template-hash": "8f2c1"
+    },
+    "annotations": {},
+    "ownerReferences": [
+     {
+      "kind": "ReplicaSet",
+      "name": "api-8f2c1",
+      "uid": "uid-rs-api-8f2c1"
+     }
+    ]
+   },
+   "spec": {
+    "nodeName": "aks-apps-10003",
+    "containers": [
+     {
+      "name": "api",
+      "image": "registry.internal/payments/api:2.4.0",
+      "resources": {
+       "requests": {
+        "cpu": "200m",
+        "memory": "256Mi"
+       },
+       "limits": {
+        "cpu": "500m",
+        "memory": "512Mi"
+       }
+      }
+     }
+    ],
+    "volumes": []
+   },
+   "status": {
+    "phase": "Running",
+    "startTime": "2026-09-16T01:05:00Z",
+    "conditions": [
+     {
+      "type": "Ready",
+      "status": "True",
+      "lastTransitionTime": "2026-09-16T02:52:00Z",
+      "reason": ""
+     },
+     {
+      "type": "ContainersReady",
+      "status": "True",
+      "lastTransitionTime": "2026-09-16T02:52:00Z"
+     }
+    ],
+    "containerStatuses": [
+     {
+      "name": "api",
+      "ready": true,
+      "restartCount": 0,
+      "image": "registry.internal/payments/api:2.4.0",
+      "imageID": "registry.internal/payments/api@sha256:bb22",
+      "state": {
+       "running": {
+        "startedAt": "2026-09-16T01:05:00Z"
+       }
+      },
+      "lastState": {}
+     }
+    ]
+   }
+  },
+  {
+   "metadata": {
+    "name": "api-8f2c1-h4",
+    "namespace": "payments",
+    "uid": "uid-pod-api-8f2c1-h4",
+    "creationTimestamp": "2026-09-16T01:05:00Z",
+    "labels": {
+     "app": "api",
+     "pod-template-hash": "8f2c1"
+    },
+    "annotations": {},
+    "ownerReferences": [
+     {
+      "kind": "ReplicaSet",
+      "name": "api-8f2c1",
+      "uid": "uid-rs-api-8f2c1"
+     }
+    ]
+   },
+   "spec": {
+    "nodeName": "aks-apps-10004",
+    "containers": [
+     {
+      "name": "api",
+      "image": "registry.internal/payments/api:2.4.0",
+      "resources": {
+       "requests": {
+        "cpu": "200m",
+        "memory": "256Mi"
+       },
+       "limits": {
+        "cpu": "500m",
+        "memory": "512Mi"
+       }
+      }
+     }
+    ],
+    "volumes": []
+   },
+   "status": {
+    "phase": "Running",
+    "startTime": "2026-09-16T01:05:00Z",
+    "conditions": [
+     {
+      "type": "Ready",
+      "status": "True",
+      "lastTransitionTime": "2026-09-16T02:52:00Z",
+      "reason": ""
+     },
+     {
+      "type": "ContainersReady",
+      "status": "True",
+      "lastTransitionTime": "2026-09-16T02:52:00Z"
+     }
+    ],
+    "containerStatuses": [
+     {
+      "name": "api",
+      "ready": true,
+      "restartCount": 0,
+      "image": "registry.internal/payments/api:2.4.0",
+      "imageID": "registry.internal/payments/api@sha256:bb22",
+      "state": {
+       "running": {
+        "startedAt": "2026-09-16T01:05:00Z"
+       }
+      },
+      "lastState": {}
+     }
+    ]
+   }
+  },
+  {
+   "metadata": {
+    "name": "api-8f2c1-h5",
+    "namespace": "payments",
+    "uid": "uid-pod-api-8f2c1-h5",
+    "creationTimestamp": "2026-09-16T01:05:00Z",
+    "labels": {
+     "app": "api",
+     "pod-template-hash": "8f2c1"
+    },
+    "annotations": {},
+    "ownerReferences": [
+     {
+      "kind": "ReplicaSet",
+      "name": "api-8f2c1",
+      "uid": "uid-rs-api-8f2c1"
+     }
+    ]
+   },
+   "spec": {
+    "nodeName": "aks-apps-10005",
+    "containers": [
+     {
+      "name": "api",
+      "image": "registry.internal/payments/api:2.4.0",
+      "resources": {
+       "requests": {
+        "cpu": "200m",
+        "memory": "256Mi"
+       },
+       "limits": {
+        "cpu": "500m",
+        "memory": "512Mi"
+       }
+      }
+     }
+    ],
+    "volumes": []
+   },
+   "status": {
+    "phase": "Running",
+    "startTime": "2026-09-16T01:05:00Z",
+    "conditions": [
+     {
+      "type": "Ready",
+      "status": "True",
+      "lastTransitionTime": "2026-09-16T02:52:00Z",
+      "reason": ""
+     },
+     {
+      "type": "ContainersReady",
+      "status": "True",
+      "lastTransitionTime": "2026-09-16T02:52:00Z"
+     }
+    ],
+    "containerStatuses": [
+     {
+      "name": "api",
+      "ready": true,
+      "restartCount": 0,
+      "image": "registry.internal/payments/api:2.4.0",
+      "imageID": "registry.internal/payments/api@sha256:bb22",
+      "state": {
+       "running": {
+        "startedAt": "2026-09-16T01:05:00Z"
+       }
+      },
+      "lastState": {}
+     }
+    ]
+   }
+  }
+ ]
+}

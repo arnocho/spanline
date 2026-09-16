@@ -1,0 +1,60 @@
+{
+ "apiVersion": "v1",
+ "kind": "List",
+ "items": [
+  {
+   "metadata": {
+    "name": "api-probe-0",
+    "namespace": "payments",
+    "creationTimestamp": "2026-09-16T02:32:10Z"
+   },
+   "involvedObject": {
+    "kind": "Pod",
+    "name": "api-8f2c1-n0",
+    "namespace": "payments"
+   },
+   "reason": "Unhealthy",
+   "message": "Readiness probe failed: dial tcp 10.0.3.4:8080: connect: connection refused",
+   "type": "Warning",
+   "count": 22,
+   "firstTimestamp": "2026-09-16T02:32:10Z",
+   "lastTimestamp": "2026-09-16T03:10:00Z"
+  },
+  {
+   "metadata": {
+    "name": "api-probe-1",
+    "namespace": "payments",
+    "creationTimestamp": "2026-09-16T02:32:11Z"
+   },
+   "involvedObject": {
+    "kind": "Pod",
+    "name": "api-8f2c1-n1",
+    "namespace": "payments"
+   },
+   "reason": "Unhealthy",
+   "message": "Readiness probe failed: dial tcp 10.0.3.4:8080: connect: connection refused",
+   "type": "Warning",
+   "count": 22,
+   "firstTimestamp": "2026-09-16T02:32:11Z",
+   "lastTimestamp": "2026-09-16T03:10:00Z"
+  },
+  {
+   "metadata": {
+    "name": "api-probe-2",
+    "namespace": "payments",
+    "creationTimestamp": "2026-09-16T02:32:12Z"
+   },
+   "involvedObject": {
+    "kind": "Pod",
+    "name": "api-8f2c1-n2",
+    "namespace": "payments"
+   },
+   "reason": "Unhealthy",
+   "message": "Readiness probe failed: dial tcp 10.0.3.4:8080: connect: connection refused",
+   "type": "Warning",
+   "count": 22,
+   "firstTimestamp": "2026-09-16T02:32:12Z",
+   "lastTimestamp": "2026-09-16T03:10:00Z"
+  }
+ ]
+}

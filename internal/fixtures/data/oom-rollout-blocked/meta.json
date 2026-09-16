@@ -1,0 +1,10 @@
+{
+ "name": "oom-rollout-blocked",
+ "description": "Rollout blocked: 6 pods OOMKilled on the new template hash, 4 healthy on the old one.",
+ "contexts": [
+  "aks-prod-weu"
+ ],
+ "namespace": "payments",
+ "workload": "deploy/checkout",
+ "now": "2026-09-16T03:20:00Z"
+}

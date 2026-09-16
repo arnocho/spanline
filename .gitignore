@@ -1,0 +1,5 @@
+dist/
+spanline
+*.out
+.DS_Store
+vendor/

@@ -1,0 +1,132 @@
+{
+ "apiVersion": "v1",
+ "kind": "List",
+ "items": [
+  {
+   "kind": "Deployment",
+   "metadata": {
+    "name": "ingest",
+    "namespace": "pipeline",
+    "uid": "uid-deploy-ingest",
+    "creationTimestamp": "2026-09-16T00:10:00Z",
+    "labels": {
+     "app": "ingest"
+    },
+    "annotations": {
+     "deployment.kubernetes.io/revision": "9",
+     "meta.helm.sh/release-name": "pipeline",
+     "meta.helm.sh/release-namespace": "pipeline"
+    },
+    "managedFields": [
+     {
+      "manager": "argocd-application-controller",
+      "operation": "Apply",
+      "time": "2026-09-16T00:10:00Z"
+     }
+    ]
+   },
+   "spec": {
+    "replicas": 3,
+    "selector": {
+     "matchLabels": {
+      "app": "ingest"
+     }
+    },
+    "template": {
+     "metadata": {
+      "labels": {
+       "app": "ingest"
+      },
+      "creationTimestamp": null
+     },
+     "spec": {
+      "containers": [
+       {
+        "name": "ingest",
+        "image": "registry.internal/pipeline/ingest:5.0.2",
+        "resources": {
+         "requests": {
+          "cpu": "200m",
+          "memory": "256Mi"
+         },
+         "limits": {
+          "cpu": "500m",
+          "memory": "2Gi"
+         }
+        }
+       }
+      ]
+     }
+    }
+   },
+   "status": {
+    "replicas": 3,
+    "readyReplicas": 3,
+    "availableReplicas": 3
+   }
+  },
+  {
+   "kind": "Deployment",
+   "metadata": {
+    "name": "scheduler",
+    "namespace": "pipeline",
+    "uid": "uid-deploy-scheduler",
+    "creationTimestamp": "2026-09-16T00:12:00Z",
+    "labels": {
+     "app": "scheduler"
+    },
+    "annotations": {
+     "deployment.kubernetes.io/revision": "4",
+     "meta.helm.sh/release-name": "pipeline",
+     "meta.helm.sh/release-namespace": "pipeline"
+    },
+    "managedFields": [
+     {
+      "manager": "argocd-application-controller",
+      "operation": "Apply",
+      "time": "2026-09-16T00:12:00Z"
+     }
+    ]
+   },
+   "spec": {
+    "replicas": 1,
+    "selector": {
+     "matchLabels": {
+      "app": "scheduler"
+     }
+    },
+    "template": {
+     "metadata": {
+      "labels": {
+       "app": "scheduler"
+      },
+      "creationTimestamp": null
+     },
+     "spec": {
+      "containers": [
+       {
+        "name": "scheduler",
+        "image": "registry.internal/pipeline/scheduler:2.1.0",
+        "resources": {
+         "requests": {
+          "cpu": "200m",
+          "memory": "256Mi"
+         },
+         "limits": {
+          "cpu": "500m",
+          "memory": "1Gi"
+         }
+        }
+       }
+      ]
+     }
+    }
+   },
+   "status": {
+    "replicas": 1,
+    "readyReplicas": 0,
+    "availableReplicas": 0
+   }
+  }
+ ]
+}

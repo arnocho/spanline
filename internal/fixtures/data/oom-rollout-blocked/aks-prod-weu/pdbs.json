@@ -1,0 +1,27 @@
+{
+ "apiVersion": "v1",
+ "kind": "List",
+ "items": [
+  {
+   "metadata": {
+    "name": "checkout",
+    "namespace": "payments",
+    "creationTimestamp": "2026-09-16T01:00:00Z"
+   },
+   "spec": {
+    "selector": {
+     "matchLabels": {
+      "app": "checkout"
+     }
+    },
+    "minAvailable": "100%"
+   },
+   "status": {
+    "disruptionsAllowed": 0,
+    "currentHealthy": 4,
+    "desiredHealthy": 10,
+    "expectedPods": 10
+   }
+  }
+ ]
+}

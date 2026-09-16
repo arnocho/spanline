@@ -1,0 +1,114 @@
+{
+ "apiVersion": "v1",
+ "kind": "List",
+ "items": [
+  {
+   "metadata": {
+    "name": "cart-oom-0",
+    "namespace": "payments",
+    "creationTimestamp": "2026-09-16T03:09:40Z"
+   },
+   "involvedObject": {
+    "kind": "Pod",
+    "name": "cart-3e7a9-0",
+    "namespace": "payments"
+   },
+   "reason": "OOMKilling",
+   "message": "Memory cgroup out of memory",
+   "type": "Warning",
+   "count": 4,
+   "firstTimestamp": "2026-09-16T03:09:40Z",
+   "lastTimestamp": "2026-09-16T03:19:00Z"
+  },
+  {
+   "metadata": {
+    "name": "cart-oom-1",
+    "namespace": "payments",
+    "creationTimestamp": "2026-09-16T03:09:41Z"
+   },
+   "involvedObject": {
+    "kind": "Pod",
+    "name": "cart-3e7a9-1",
+    "namespace": "payments"
+   },
+   "reason": "OOMKilling",
+   "message": "Memory cgroup out of memory",
+   "type": "Warning",
+   "count": 4,
+   "firstTimestamp": "2026-09-16T03:09:41Z",
+   "lastTimestamp": "2026-09-16T03:19:00Z"
+  },
+  {
+   "metadata": {
+    "name": "cart-oom-2",
+    "namespace": "payments",
+    "creationTimestamp": "2026-09-16T03:09:42Z"
+   },
+   "involvedObject": {
+    "kind": "Pod",
+    "name": "cart-3e7a9-2",
+    "namespace": "payments"
+   },
+   "reason": "OOMKilling",
+   "message": "Memory cgroup out of memory",
+   "type": "Warning",
+   "count": 4,
+   "firstTimestamp": "2026-09-16T03:09:42Z",
+   "lastTimestamp": "2026-09-16T03:19:00Z"
+  },
+  {
+   "metadata": {
+    "name": "cart-oom-3",
+    "namespace": "payments",
+    "creationTimestamp": "2026-09-16T03:09:43Z"
+   },
+   "involvedObject": {
+    "kind": "Pod",
+    "name": "cart-3e7a9-3",
+    "namespace": "payments"
+   },
+   "reason": "OOMKilling",
+   "message": "Memory cgroup out of memory",
+   "type": "Warning",
+   "count": 4,
+   "firstTimestamp": "2026-09-16T03:09:43Z",
+   "lastTimestamp": "2026-09-16T03:19:00Z"
+  },
+  {
+   "metadata": {
+    "name": "cart-oom-4",
+    "namespace": "payments",
+    "creationTimestamp": "2026-09-16T03:09:44Z"
+   },
+   "involvedObject": {
+    "kind": "Pod",
+    "name": "cart-3e7a9-4",
+    "namespace": "payments"
+   },
+   "reason": "OOMKilling",
+   "message": "Memory cgroup out of memory",
+   "type": "Warning",
+   "count": 4,
+   "firstTimestamp": "2026-09-16T03:09:44Z",
+   "lastTimestamp": "2026-09-16T03:19:00Z"
+  },
+  {
+   "metadata": {
+    "name": "cart-oom-5",
+    "namespace": "payments",
+    "creationTimestamp": "2026-09-16T03:09:45Z"
+   },
+   "involvedObject": {
+    "kind": "Pod",
+    "name": "cart-3e7a9-5",
+    "namespace": "payments"
+   },
+   "reason": "OOMKilling",
+   "message": "Memory cgroup out of memory",
+   "type": "Warning",
+   "count": 4,
+   "firstTimestamp": "2026-09-16T03:09:45Z",
+   "lastTimestamp": "2026-09-16T03:19:00Z"
+  }
+ ]
+}

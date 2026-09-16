@@ -1,0 +1,191 @@
+{
+ "apiVersion": "v1",
+ "kind": "List",
+ "items": [
+  {
+   "kind": "Deployment",
+   "metadata": {
+    "name": "payments-api",
+    "namespace": "payments",
+    "uid": "uid-deploy-payments-api",
+    "creationTimestamp": "2026-09-16T00:30:00Z",
+    "labels": {
+     "app": "payments-api"
+    },
+    "annotations": {
+     "deployment.kubernetes.io/revision": "7",
+     "meta.helm.sh/release-name": "payments",
+     "meta.helm.sh/release-namespace": "payments"
+    },
+    "managedFields": [
+     {
+      "manager": "argocd-application-controller",
+      "operation": "Apply",
+      "time": "2026-09-16T00:30:00Z"
+     }
+    ]
+   },
+   "spec": {
+    "replicas": 4,
+    "selector": {
+     "matchLabels": {
+      "app": "payments-api"
+     }
+    },
+    "template": {
+     "metadata": {
+      "labels": {
+       "app": "payments-api"
+      },
+      "creationTimestamp": null
+     },
+     "spec": {
+      "containers": [
+       {
+        "name": "payments-api",
+        "image": "registry.internal/payments/api:2.4.0",
+        "resources": {
+         "requests": {
+          "cpu": "200m",
+          "memory": "256Mi"
+         },
+         "limits": {
+          "cpu": "500m",
+          "memory": "1Gi"
+         }
+        }
+       }
+      ]
+     }
+    }
+   },
+   "status": {
+    "replicas": 4,
+    "readyReplicas": 4,
+    "availableReplicas": 4
+   }
+  },
+  {
+   "kind": "Deployment",
+   "metadata": {
+    "name": "orders",
+    "namespace": "orders",
+    "uid": "uid-deploy-orders",
+    "creationTimestamp": "2026-09-16T00:35:00Z",
+    "labels": {
+     "app": "orders"
+    },
+    "annotations": {
+     "deployment.kubernetes.io/revision": "3"
+    },
+    "managedFields": [
+     {
+      "manager": "argocd-application-controller",
+      "operation": "Apply",
+      "time": "2026-09-16T00:35:00Z"
+     }
+    ]
+   },
+   "spec": {
+    "replicas": 1,
+    "selector": {
+     "matchLabels": {
+      "app": "orders"
+     }
+    },
+    "template": {
+     "metadata": {
+      "labels": {
+       "app": "orders"
+      },
+      "creationTimestamp": null
+     },
+     "spec": {
+      "containers": [
+       {
+        "name": "orders",
+        "image": "registry.internal/orders/api:1.2.0",
+        "resources": {
+         "requests": {
+          "cpu": "200m",
+          "memory": "256Mi"
+         },
+         "limits": {
+          "cpu": "500m",
+          "memory": "512Mi"
+         }
+        }
+       }
+      ]
+     }
+    }
+   },
+   "status": {
+    "replicas": 1,
+    "readyReplicas": 1,
+    "availableReplicas": 1
+   }
+  },
+  {
+   "kind": "Deployment",
+   "metadata": {
+    "name": "warehouse",
+    "namespace": "analytics",
+    "uid": "uid-deploy-warehouse",
+    "creationTimestamp": "2026-09-16T00:20:00Z",
+    "labels": {
+     "app": "warehouse"
+    },
+    "annotations": {
+     "deployment.kubernetes.io/revision": "2"
+    },
+    "managedFields": [
+     {
+      "manager": "argocd-application-controller",
+      "operation": "Apply",
+      "time": "2026-09-16T00:20:00Z"
+     }
+    ]
+   },
+   "spec": {
+    "replicas": 2,
+    "selector": {
+     "matchLabels": {
+      "app": "warehouse"
+     }
+    },
+    "template": {
+     "metadata": {
+      "labels": {
+       "app": "warehouse"
+      },
+      "creationTimestamp": null
+     },
+     "spec": {
+      "containers": [
+       {
+        "name": "warehouse",
+        "image": "registry.internal/analytics/warehouse:0.9.1",
+        "resources": {
+         "requests": {
+          "cpu": "200m",
+          "memory": "256Mi"
+         },
+         "limits": {
+          "cpu": "500m",
+          "memory": "12Gi"
+         }
+        }
+       }
+      ]
+     }
+    }
+   },
+   "status": {
+    "replicas": 2,
+    "readyReplicas": 2,
+    "availableReplicas": 2
+   }
+  }
+ ]
+}

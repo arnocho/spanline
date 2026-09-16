@@ -1,0 +1,264 @@
+{
+ "apiVersion": "v1",
+ "kind": "List",
+ "items": [
+  {
+   "metadata": {
+    "name": "aks-apps-10000",
+    "uid": "uid-node-aks-apps-10000",
+    "creationTimestamp": "2026-09-16T02:10:00Z",
+    "labels": {
+     "kubernetes.io/hostname": "aks-apps-10000",
+     "kubernetes.azure.com/agentpool": "apps",
+     "agentpool": "apps",
+     "topology.kubernetes.io/zone": "1",
+     "kubernetes.azure.com/node-image-version": "AKSUbuntu-2204gen2containerd-202609.10.0",
+     "kubernetes.io/os": "linux"
+    }
+   },
+   "spec": {
+    "taints": [],
+    "providerID": "azure:///subscriptions/x/vm/aks-apps-10000"
+   },
+   "status": {
+    "nodeInfo": {
+     "osImage": "Ubuntu 22.04.5 LTS",
+     "kernelVersion": "5.15.0-1081-azure",
+     "kubeletVersion": "v1.31.6",
+     "containerRuntimeVersion": "containerd://1.7.27"
+    },
+    "allocatable": {
+     "cpu": "3860m",
+     "memory": "12Gi",
+     "pods": "110"
+    },
+    "capacity": {
+     "cpu": "4",
+     "memory": "16Gi",
+     "pods": "110"
+    },
+    "conditions": [
+     {
+      "type": "Ready",
+      "status": "True"
+     }
+    ]
+   }
+  },
+  {
+   "metadata": {
+    "name": "aks-apps-10001",
+    "uid": "uid-node-aks-apps-10001",
+    "creationTimestamp": "2026-09-16T02:10:00Z",
+    "labels": {
+     "kubernetes.io/hostname": "aks-apps-10001",
+     "kubernetes.azure.com/agentpool": "apps",
+     "agentpool": "apps",
+     "topology.kubernetes.io/zone": "2",
+     "kubernetes.azure.com/node-image-version": "AKSUbuntu-2204gen2containerd-202609.10.0",
+     "kubernetes.io/os": "linux"
+    }
+   },
+   "spec": {
+    "taints": [],
+    "providerID": "azure:///subscriptions/x/vm/aks-apps-10001"
+   },
+   "status": {
+    "nodeInfo": {
+     "osImage": "Ubuntu 22.04.5 LTS",
+     "kernelVersion": "5.15.0-1081-azure",
+     "kubeletVersion": "v1.31.6",
+     "containerRuntimeVersion": "containerd://1.7.27"
+    },
+    "allocatable": {
+     "cpu": "3860m",
+     "memory": "12Gi",
+     "pods": "110"
+    },
+    "capacity": {
+     "cpu": "4",
+     "memory": "16Gi",
+     "pods": "110"
+    },
+    "conditions": [
+     {
+      "type": "Ready",
+      "status": "True"
+     }
+    ]
+   }
+  },
+  {
+   "metadata": {
+    "name": "aks-apps-10002",
+    "uid": "uid-node-aks-apps-10002",
+    "creationTimestamp": "2026-09-16T02:10:00Z",
+    "labels": {
+     "kubernetes.io/hostname": "aks-apps-10002",
+     "kubernetes.azure.com/agentpool": "apps",
+     "agentpool": "apps",
+     "topology.kubernetes.io/zone": "3",
+     "kubernetes.azure.com/node-image-version": "AKSUbuntu-2204gen2containerd-202609.10.0",
+     "kubernetes.io/os": "linux"
+    }
+   },
+   "spec": {
+    "taints": [],
+    "providerID": "azure:///subscriptions/x/vm/aks-apps-10002"
+   },
+   "status": {
+    "nodeInfo": {
+     "osImage": "Ubuntu 22.04.5 LTS",
+     "kernelVersion": "5.15.0-1081-azure",
+     "kubeletVersion": "v1.31.6",
+     "containerRuntimeVersion": "containerd://1.7.27"
+    },
+    "allocatable": {
+     "cpu": "3860m",
+     "memory": "12Gi",
+     "pods": "110"
+    },
+    "capacity": {
+     "cpu": "4",
+     "memory": "16Gi",
+     "pods": "110"
+    },
+    "conditions": [
+     {
+      "type": "Ready",
+      "status": "True"
+     }
+    ]
+   }
+  },
+  {
+   "metadata": {
+    "name": "aks-apps-10003",
+    "uid": "uid-node-aks-apps-10003",
+    "creationTimestamp": "2026-09-16T01:00:00Z",
+    "labels": {
+     "kubernetes.io/hostname": "aks-apps-10003",
+     "kubernetes.azure.com/agentpool": "apps",
+     "agentpool": "apps",
+     "topology.kubernetes.io/zone": "1",
+     "kubernetes.azure.com/node-image-version": "AKSUbuntu-2204gen2containerd-202608.20.0",
+     "kubernetes.io/os": "linux"
+    }
+   },
+   "spec": {
+    "taints": [],
+    "providerID": "azure:///subscriptions/x/vm/aks-apps-10003"
+   },
+   "status": {
+    "nodeInfo": {
+     "osImage": "Ubuntu 22.04.5 LTS",
+     "kernelVersion": "5.15.0-1073-azure",
+     "kubeletVersion": "v1.31.6",
+     "containerRuntimeVersion": "containerd://1.7.27"
+    },
+    "allocatable": {
+     "cpu": "3860m",
+     "memory": "12Gi",
+     "pods": "110"
+    },
+    "capacity": {
+     "cpu": "4",
+     "memory": "16Gi",
+     "pods": "110"
+    },
+    "conditions": [
+     {
+      "type": "Ready",
+      "status": "True"
+     }
+    ]
+   }
+  },
+  {
+   "metadata": {
+    "name": "aks-apps-10004",
+    "uid": "uid-node-aks-apps-10004",
+    "creationTimestamp": "2026-09-16T01:00:00Z",
+    "labels": {
+     "kubernetes.io/hostname": "aks-apps-10004",
+     "kubernetes.azure.com/agentpool": "apps",
+     "agentpool": "apps",
+     "topology.kubernetes.io/zone": "2",
+     "kubernetes.azure.com/node-image-version": "AKSUbuntu-2204gen2containerd-202608.20.0",
+     "kubernetes.io/os": "linux"
+    }
+   },
+   "spec": {
+    "taints": [],
+    "providerID": "azure:///subscriptions/x/vm/aks-apps-10004"
+   },
+   "status": {
+    "nodeInfo": {
+     "osImage": "Ubuntu 22.04.5 LTS",
+     "kernelVersion": "5.15.0-1073-azure",
+     "kubeletVersion": "v1.31.6",
+     "containerRuntimeVersion": "containerd://1.7.27"
+    },
+    "allocatable": {
+     "cpu": "3860m",
+     "memory": "12Gi",
+     "pods": "110"
+    },
+    "capacity": {
+     "cpu": "4",
+     "memory": "16Gi",
+     "pods": "110"
+    },
+    "conditions": [
+     {
+      "type": "Ready",
+      "status": "True"
+     }
+    ]
+   }
+  },
+  {
+   "metadata": {
+    "name": "aks-apps-10005",
+    "uid": "uid-node-aks-apps-10005",
+    "creationTimestamp": "2026-09-16T01:00:00Z",
+    "labels": {
+     "kubernetes.io/hostname": "aks-apps-10005",
+     "kubernetes.azure.com/agentpool": "apps",
+     "agentpool": "apps",
+     "topology.kubernetes.io/zone": "3",
+     "kubernetes.azure.com/node-image-version": "AKSUbuntu-2204gen2containerd-202608.20.0",
+     "kubernetes.io/os": "linux"
+    }
+   },
+   "spec": {
+    "taints": [],
+    "providerID": "azure:///subscriptions/x/vm/aks-apps-10005"
+   },
+   "status": {
+    "nodeInfo": {
+     "osImage": "Ubuntu 22.04.5 LTS",
+     "kernelVersion": "5.15.0-1073-azure",
+     "kubeletVersion": "v1.31.6",
+     "containerRuntimeVersion": "containerd://1.7.27"
+    },
+    "allocatable": {
+     "cpu": "3860m",
+     "memory": "12Gi",
+     "pods": "110"
+    },
+    "capacity": {
+     "cpu": "4",
+     "memory": "16Gi",
+     "pods": "110"
+    },
+    "conditions": [
+     {
+      "type": "Ready",
+      "status": "True"
+     }
+    ]
+   }
+  }
+ ]
+}

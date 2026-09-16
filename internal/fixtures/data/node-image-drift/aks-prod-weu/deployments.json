@@ -1,0 +1,67 @@
+{
+ "apiVersion": "v1",
+ "kind": "List",
+ "items": [
+  {
+   "kind": "Deployment",
+   "metadata": {
+    "name": "api",
+    "namespace": "payments",
+    "uid": "uid-deploy-api",
+    "creationTimestamp": "2026-09-16T00:30:00Z",
+    "labels": {
+     "app": "api"
+    },
+    "annotations": {
+     "deployment.kubernetes.io/revision": "7"
+    },
+    "managedFields": [
+     {
+      "manager": "argocd-application-controller",
+      "operation": "Apply",
+      "time": "2026-09-16T00:30:00Z"
+     }
+    ]
+   },
+   "spec": {
+    "replicas": 6,
+    "selector": {
+     "matchLabels": {
+      "app": "api"
+     }
+    },
+    "template": {
+     "metadata": {
+      "labels": {
+       "app": "api"
+      },
+      "creationTimestamp": null
+     },
+     "spec": {
+      "containers": [
+       {
+        "name": "api",
+        "image": "registry.internal/payments/api:2.4.0",
+        "resources": {
+         "requests": {
+          "cpu": "200m",
+          "memory": "256Mi"
+         },
+         "limits": {
+          "cpu": "500m",
+          "memory": "1Gi"
+         }
+        }
+       }
+      ]
+     }
+    }
+   },
+   "status": {
+    "replicas": 6,
+    "readyReplicas": 3,
+    "availableReplicas": 3
+   }
+  }
+ ]
+}

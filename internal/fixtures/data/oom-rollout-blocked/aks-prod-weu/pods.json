@@ -1,0 +1,938 @@
+{
+ "apiVersion": "v1",
+ "kind": "List",
+ "items": [
+  {
+   "metadata": {
+    "name": "checkout-7d9f5-x0",
+    "namespace": "payments",
+    "uid": "uid-pod-checkout-7d9f5-x0",
+    "creationTimestamp": "2026-09-16T02:51:40Z",
+    "labels": {
+     "app": "checkout",
+     "pod-template-hash": "7d9f5"
+    },
+    "annotations": {
+     "checksum/config": "9e1f2a"
+    },
+    "ownerReferences": [
+     {
+      "kind": "ReplicaSet",
+      "name": "checkout-7d9f5",
+      "uid": "uid-rs-checkout-7d9f5"
+     }
+    ]
+   },
+   "spec": {
+    "nodeName": "aks-apps-10000",
+    "containers": [
+     {
+      "name": "checkout",
+      "image": "registry.internal/payments/checkout:1.9.0",
+      "resources": {
+       "requests": {
+        "cpu": "200m",
+        "memory": "256Mi"
+       },
+       "limits": {
+        "cpu": "500m",
+        "memory": "512Mi"
+       }
+      }
+     }
+    ],
+    "volumes": []
+   },
+   "status": {
+    "phase": "Running",
+    "startTime": "2026-09-16T02:51:40Z",
+    "conditions": [
+     {
+      "type": "Ready",
+      "status": "False",
+      "lastTransitionTime": "2026-09-16T03:02:20Z",
+      "reason": "ContainersNotReady"
+     },
+     {
+      "type": "ContainersReady",
+      "status": "False",
+      "lastTransitionTime": "2026-09-16T03:02:20Z"
+     }
+    ],
+    "containerStatuses": [
+     {
+      "name": "checkout",
+      "ready": false,
+      "restartCount": 3,
+      "image": "registry.internal/payments/checkout:1.9.0",
+      "imageID": "registry.internal/payments/checkout@sha256:e1a077bd",
+      "state": {
+       "waiting": {
+        "reason": "CrashLoopBackOff",
+        "message": "back-off 40s restarting failed container"
+       }
+      },
+      "lastState": {
+       "terminated": {
+        "reason": "OOMKilled",
+        "exitCode": 137,
+        "startedAt": "2026-09-16T02:51:40Z",
+        "finishedAt": "2026-09-16T03:02:14Z"
+       }
+      }
+     }
+    ]
+   }
+  },
+  {
+   "metadata": {
+    "name": "checkout-7d9f5-k1",
+    "namespace": "payments",
+    "uid": "uid-pod-checkout-7d9f5-k1",
+    "creationTimestamp": "2026-09-16T02:51:40Z",
+    "labels": {
+     "app": "checkout",
+     "pod-template-hash": "7d9f5"
+    },
+    "annotations": {
+     "checksum/config": "9e1f2a"
+    },
+    "ownerReferences": [
+     {
+      "kind": "ReplicaSet",
+      "name": "checkout-7d9f5",
+      "uid": "uid-rs-checkout-7d9f5"
+     }
+    ]
+   },
+   "spec": {
+    "nodeName": "aks-apps-10001",
+    "containers": [
+     {
+      "name": "checkout",
+      "image": "registry.internal/payments/checkout:1.9.0",
+      "resources": {
+       "requests": {
+        "cpu": "200m",
+        "memory": "256Mi"
+       },
+       "limits": {
+        "cpu": "500m",
+        "memory": "512Mi"
+       }
+      }
+     }
+    ],
+    "volumes": []
+   },
+   "status": {
+    "phase": "Running",
+    "startTime": "2026-09-16T02:51:40Z",
+    "conditions": [
+     {
+      "type": "Ready",
+      "status": "False",
+      "lastTransitionTime": "2026-09-16T03:02:21Z",
+      "reason": "ContainersNotReady"
+     },
+     {
+      "type": "ContainersReady",
+      "status": "False",
+      "lastTransitionTime": "2026-09-16T03:02:21Z"
+     }
+    ],
+    "containerStatuses": [
+     {
+      "name": "checkout",
+      "ready": false,
+      "restartCount": 4,
+      "image": "registry.internal/payments/checkout:1.9.0",
+      "imageID": "registry.internal/payments/checkout@sha256:e1a077bd",
+      "state": {
+       "waiting": {
+        "reason": "CrashLoopBackOff",
+        "message": "back-off 40s restarting failed container"
+       }
+      },
+      "lastState": {
+       "terminated": {
+        "reason": "OOMKilled",
+        "exitCode": 137,
+        "startedAt": "2026-09-16T02:51:40Z",
+        "finishedAt": "2026-09-16T03:02:15Z"
+       }
+      }
+     }
+    ]
+   }
+  },
+  {
+   "metadata": {
+    "name": "checkout-7d9f5-q2",
+    "namespace": "payments",
+    "uid": "uid-pod-checkout-7d9f5-q2",
+    "creationTimestamp": "2026-09-16T02:51:40Z",
+    "labels": {
+     "app": "checkout",
+     "pod-template-hash": "7d9f5"
+    },
+    "annotations": {
+     "checksum/config": "9e1f2a"
+    },
+    "ownerReferences": [
+     {
+      "kind": "ReplicaSet",
+      "name": "checkout-7d9f5",
+      "uid": "uid-rs-checkout-7d9f5"
+     }
+    ]
+   },
+   "spec": {
+    "nodeName": "aks-apps-10002",
+    "containers": [
+     {
+      "name": "checkout",
+      "image": "registry.internal/payments/checkout:1.9.0",
+      "resources": {
+       "requests": {
+        "cpu": "200m",
+        "memory": "256Mi"
+       },
+       "limits": {
+        "cpu": "500m",
+        "memory": "512Mi"
+       }
+      }
+     }
+    ],
+    "volumes": []
+   },
+   "status": {
+    "phase": "Running",
+    "startTime": "2026-09-16T02:51:40Z",
+    "conditions": [
+     {
+      "type": "Ready",
+      "status": "False",
+      "lastTransitionTime": "2026-09-16T03:02:22Z",
+      "reason": "ContainersNotReady"
+     },
+     {
+      "type": "ContainersReady",
+      "status": "False",
+      "lastTransitionTime": "2026-09-16T03:02:22Z"
+     }
+    ],
+    "containerStatuses": [
+     {
+      "name": "checkout",
+      "ready": false,
+      "restartCount": 5,
+      "image": "registry.internal/payments/checkout:1.9.0",
+      "imageID": "registry.internal/payments/checkout@sha256:e1a077bd",
+      "state": {
+       "waiting": {
+        "reason": "CrashLoopBackOff",
+        "message": "back-off 40s restarting failed container"
+       }
+      },
+      "lastState": {
+       "terminated": {
+        "reason": "OOMKilled",
+        "exitCode": 137,
+        "startedAt": "2026-09-16T02:51:40Z",
+        "finishedAt": "2026-09-16T03:02:16Z"
+       }
+      }
+     }
+    ]
+   }
+  },
+  {
+   "metadata": {
+    "name": "checkout-7d9f5-r3",
+    "namespace": "payments",
+    "uid": "uid-pod-checkout-7d9f5-r3",
+    "creationTimestamp": "2026-09-16T02:51:40Z",
+    "labels": {
+     "app": "checkout",
+     "pod-template-hash": "7d9f5"
+    },
+    "annotations": {
+     "checksum/config": "9e1f2a"
+    },
+    "ownerReferences": [
+     {
+      "kind": "ReplicaSet",
+      "name": "checkout-7d9f5",
+      "uid": "uid-rs-checkout-7d9f5"
+     }
+    ]
+   },
+   "spec": {
+    "nodeName": "aks-apps-10003",
+    "containers": [
+     {
+      "name": "checkout",
+      "image": "registry.internal/payments/checkout:1.9.0",
+      "resources": {
+       "requests": {
+        "cpu": "200m",
+        "memory": "256Mi"
+       },
+       "limits": {
+        "cpu": "500m",
+        "memory": "512Mi"
+       }
+      }
+     }
+    ],
+    "volumes": []
+   },
+   "status": {
+    "phase": "Running",
+    "startTime": "2026-09-16T02:51:40Z",
+    "conditions": [
+     {
+      "type": "Ready",
+      "status": "False",
+      "lastTransitionTime": "2026-09-16T03:02:23Z",
+      "reason": "ContainersNotReady"
+     },
+     {
+      "type": "ContainersReady",
+      "status": "False",
+      "lastTransitionTime": "2026-09-16T03:02:23Z"
+     }
+    ],
+    "containerStatuses": [
+     {
+      "name": "checkout",
+      "ready": false,
+      "restartCount": 3,
+      "image": "registry.internal/payments/checkout:1.9.0",
+      "imageID": "registry.internal/payments/checkout@sha256:e1a077bd",
+      "state": {
+       "waiting": {
+        "reason": "CrashLoopBackOff",
+        "message": "back-off 40s restarting failed container"
+       }
+      },
+      "lastState": {
+       "terminated": {
+        "reason": "OOMKilled",
+        "exitCode": 137,
+        "startedAt": "2026-09-16T02:51:40Z",
+        "finishedAt": "2026-09-16T03:02:17Z"
+       }
+      }
+     }
+    ]
+   }
+  },
+  {
+   "metadata": {
+    "name": "checkout-7d9f5-t4",
+    "namespace": "payments",
+    "uid": "uid-pod-checkout-7d9f5-t4",
+    "creationTimestamp": "2026-09-16T02:51:40Z",
+    "labels": {
+     "app": "checkout",
+     "pod-template-hash": "7d9f5"
+    },
+    "annotations": {
+     "checksum/config": "9e1f2a"
+    },
+    "ownerReferences": [
+     {
+      "kind": "ReplicaSet",
+      "name": "checkout-7d9f5",
+      "uid": "uid-rs-checkout-7d9f5"
+     }
+    ]
+   },
+   "spec": {
+    "nodeName": "aks-apps-10004",
+    "containers": [
+     {
+      "name": "checkout",
+      "image": "registry.internal/payments/checkout:1.9.0",
+      "resources": {
+       "requests": {
+        "cpu": "200m",
+        "memory": "256Mi"
+       },
+       "limits": {
+        "cpu": "500m",
+        "memory": "512Mi"
+       }
+      }
+     }
+    ],
+    "volumes": []
+   },
+   "status": {
+    "phase": "Running",
+    "startTime": "2026-09-16T02:51:40Z",
+    "conditions": [
+     {
+      "type": "Ready",
+      "status": "False",
+      "lastTransitionTime": "2026-09-16T03:02:24Z",
+      "reason": "ContainersNotReady"
+     },
+     {
+      "type": "ContainersReady",
+      "status": "False",
+      "lastTransitionTime": "2026-09-16T03:02:24Z"
+     }
+    ],
+    "containerStatuses": [
+     {
+      "name": "checkout",
+      "ready": false,
+      "restartCount": 4,
+      "image": "registry.internal/payments/checkout:1.9.0",
+      "imageID": "registry.internal/payments/checkout@sha256:e1a077bd",
+      "state": {
+       "waiting": {
+        "reason": "CrashLoopBackOff",
+        "message": "back-off 40s restarting failed container"
+       }
+      },
+      "lastState": {
+       "terminated": {
+        "reason": "OOMKilled",
+        "exitCode": 137,
+        "startedAt": "2026-09-16T02:51:40Z",
+        "finishedAt": "2026-09-16T03:02:18Z"
+       }
+      }
+     }
+    ]
+   }
+  },
+  {
+   "metadata": {
+    "name": "checkout-7d9f5-v5",
+    "namespace": "payments",
+    "uid": "uid-pod-checkout-7d9f5-v5",
+    "creationTimestamp": "2026-09-16T02:51:40Z",
+    "labels": {
+     "app": "checkout",
+     "pod-template-hash": "7d9f5"
+    },
+    "annotations": {
+     "checksum/config": "9e1f2a"
+    },
+    "ownerReferences": [
+     {
+      "kind": "ReplicaSet",
+      "name": "checkout-7d9f5",
+      "uid": "uid-rs-checkout-7d9f5"
+     }
+    ]
+   },
+   "spec": {
+    "nodeName": "aks-apps-10005",
+    "containers": [
+     {
+      "name": "checkout",
+      "image": "registry.internal/payments/checkout:1.9.0",
+      "resources": {
+       "requests": {
+        "cpu": "200m",
+        "memory": "256Mi"
+       },
+       "limits": {
+        "cpu": "500m",
+        "memory": "512Mi"
+       }
+      }
+     }
+    ],
+    "volumes": []
+   },
+   "status": {
+    "phase": "Running",
+    "startTime": "2026-09-16T02:51:40Z",
+    "conditions": [
+     {
+      "type": "Ready",
+      "status": "False",
+      "lastTransitionTime": "2026-09-16T03:02:25Z",
+      "reason": "ContainersNotReady"
+     },
+     {
+      "type": "ContainersReady",
+      "status": "False",
+      "lastTransitionTime": "2026-09-16T03:02:25Z"
+     }
+    ],
+    "containerStatuses": [
+     {
+      "name": "checkout",
+      "ready": false,
+      "restartCount": 5,
+      "image": "registry.internal/payments/checkout:1.9.0",
+      "imageID": "registry.internal/payments/checkout@sha256:e1a077bd",
+      "state": {
+       "waiting": {
+        "reason": "CrashLoopBackOff",
+        "message": "back-off 40s restarting failed container"
+       }
+      },
+      "lastState": {
+       "terminated": {
+        "reason": "OOMKilled",
+        "exitCode": 137,
+        "startedAt": "2026-09-16T02:51:40Z",
+        "finishedAt": "2026-09-16T03:02:19Z"
+       }
+      }
+     }
+    ]
+   }
+  },
+  {
+   "metadata": {
+    "name": "checkout-5c4b8-a0",
+    "namespace": "payments",
+    "uid": "uid-pod-checkout-5c4b8-a0",
+    "creationTimestamp": "2026-09-16T01:12:05Z",
+    "labels": {
+     "app": "checkout",
+     "pod-template-hash": "5c4b8"
+    },
+    "annotations": {
+     "checksum/config": "9e1f2a"
+    },
+    "ownerReferences": [
+     {
+      "kind": "ReplicaSet",
+      "name": "checkout-5c4b8",
+      "uid": "uid-rs-checkout-5c4b8"
+     }
+    ]
+   },
+   "spec": {
+    "nodeName": "aks-apps-10000",
+    "containers": [
+     {
+      "name": "checkout",
+      "image": "registry.internal/payments/checkout:1.8.2",
+      "resources": {
+       "requests": {
+        "cpu": "200m",
+        "memory": "256Mi"
+       },
+       "limits": {
+        "cpu": "500m",
+        "memory": "512Mi"
+       }
+      }
+     }
+    ],
+    "volumes": []
+   },
+   "status": {
+    "phase": "Running",
+    "startTime": "2026-09-16T01:12:05Z",
+    "conditions": [
+     {
+      "type": "Ready",
+      "status": "True",
+      "lastTransitionTime": "2026-09-16T01:12:30Z",
+      "reason": ""
+     },
+     {
+      "type": "ContainersReady",
+      "status": "True",
+      "lastTransitionTime": "2026-09-16T01:12:30Z"
+     }
+    ],
+    "containerStatuses": [
+     {
+      "name": "checkout",
+      "ready": true,
+      "restartCount": 0,
+      "image": "registry.internal/payments/checkout:1.8.2",
+      "imageID": "registry.internal/payments/checkout@sha256:5c4b8aa1",
+      "state": {
+       "running": {
+        "startedAt": "2026-09-16T01:12:05Z"
+       }
+      },
+      "lastState": {}
+     }
+    ]
+   }
+  },
+  {
+   "metadata": {
+    "name": "checkout-5c4b8-b1",
+    "namespace": "payments",
+    "uid": "uid-pod-checkout-5c4b8-b1",
+    "creationTimestamp": "2026-09-16T01:12:05Z",
+    "labels": {
+     "app": "checkout",
+     "pod-template-hash": "5c4b8"
+    },
+    "annotations": {
+     "checksum/config": "9e1f2a"
+    },
+    "ownerReferences": [
+     {
+      "kind": "ReplicaSet",
+      "name": "checkout-5c4b8",
+      "uid": "uid-rs-checkout-5c4b8"
+     }
+    ]
+   },
+   "spec": {
+    "nodeName": "aks-apps-10001",
+    "containers": [
+     {
+      "name": "checkout",
+      "image": "registry.internal/payments/checkout:1.8.2",
+      "resources": {
+       "requests": {
+        "cpu": "200m",
+        "memory": "256Mi"
+       },
+       "limits": {
+        "cpu": "500m",
+        "memory": "512Mi"
+       }
+      }
+     }
+    ],
+    "volumes": []
+   },
+   "status": {
+    "phase": "Running",
+    "startTime": "2026-09-16T01:12:05Z",
+    "conditions": [
+     {
+      "type": "Ready",
+      "status": "True",
+      "lastTransitionTime": "2026-09-16T01:12:30Z",
+      "reason": ""
+     },
+     {
+      "type": "ContainersReady",
+      "status": "True",
+      "lastTransitionTime": "2026-09-16T01:12:30Z"
+     }
+    ],
+    "containerStatuses": [
+     {
+      "name": "checkout",
+      "ready": true,
+      "restartCount": 0,
+      "image": "registry.internal/payments/checkout:1.8.2",
+      "imageID": "registry.internal/payments/checkout@sha256:5c4b8aa1",
+      "state": {
+       "running": {
+        "startedAt": "2026-09-16T01:12:05Z"
+       }
+      },
+      "lastState": {}
+     }
+    ]
+   }
+  },
+  {
+   "metadata": {
+    "name": "checkout-5c4b8-c2",
+    "namespace": "payments",
+    "uid": "uid-pod-checkout-5c4b8-c2",
+    "creationTimestamp": "2026-09-16T01:12:05Z",
+    "labels": {
+     "app": "checkout",
+     "pod-template-hash": "5c4b8"
+    },
+    "annotations": {
+     "checksum/config": "9e1f2a"
+    },
+    "ownerReferences": [
+     {
+      "kind": "ReplicaSet",
+      "name": "checkout-5c4b8",
+      "uid": "uid-rs-checkout-5c4b8"
+     }
+    ]
+   },
+   "spec": {
+    "nodeName": "aks-apps-10002",
+    "containers": [
+     {
+      "name": "checkout",
+      "image": "registry.internal/payments/checkout:1.8.2",
+      "resources": {
+       "requests": {
+        "cpu": "200m",
+        "memory": "256Mi"
+       },
+       "limits": {
+        "cpu": "500m",
+        "memory": "512Mi"
+       }
+      }
+     }
+    ],
+    "volumes": []
+   },
+   "status": {
+    "phase": "Running",
+    "startTime": "2026-09-16T01:12:05Z",
+    "conditions": [
+     {
+      "type": "Ready",
+      "status": "True",
+      "lastTransitionTime": "2026-09-16T01:12:30Z",
+      "reason": ""
+     },
+     {
+      "type": "ContainersReady",
+      "status": "True",
+      "lastTransitionTime": "2026-09-16T01:12:30Z"
+     }
+    ],
+    "containerStatuses": [
+     {
+      "name": "checkout",
+      "ready": true,
+      "restartCount": 0,
+      "image": "registry.internal/payments/checkout:1.8.2",
+      "imageID": "registry.internal/payments/checkout@sha256:5c4b8aa1",
+      "state": {
+       "running": {
+        "startedAt": "2026-09-16T01:12:05Z"
+       }
+      },
+      "lastState": {}
+     }
+    ]
+   }
+  },
+  {
+   "metadata": {
+    "name": "checkout-5c4b8-d3",
+    "namespace": "payments",
+    "uid": "uid-pod-checkout-5c4b8-d3",
+    "creationTimestamp": "2026-09-16T01:12:05Z",
+    "labels": {
+     "app": "checkout",
+     "pod-template-hash": "5c4b8"
+    },
+    "annotations": {
+     "checksum/config": "9e1f2a"
+    },
+    "ownerReferences": [
+     {
+      "kind": "ReplicaSet",
+      "name": "checkout-5c4b8",
+      "uid": "uid-rs-checkout-5c4b8"
+     }
+    ]
+   },
+   "spec": {
+    "nodeName": "aks-apps-10003",
+    "containers": [
+     {
+      "name": "checkout",
+      "image": "registry.internal/payments/checkout:1.8.2",
+      "resources": {
+       "requests": {
+        "cpu": "200m",
+        "memory": "256Mi"
+       },
+       "limits": {
+        "cpu": "500m",
+        "memory": "512Mi"
+       }
+      }
+     }
+    ],
+    "volumes": []
+   },
+   "status": {
+    "phase": "Running",
+    "startTime": "2026-09-16T01:12:05Z",
+    "conditions": [
+     {
+      "type": "Ready",
+      "status": "True",
+      "lastTransitionTime": "2026-09-16T01:12:30Z",
+      "reason": ""
+     },
+     {
+      "type": "ContainersReady",
+      "status": "True",
+      "lastTransitionTime": "2026-09-16T01:12:30Z"
+     }
+    ],
+    "containerStatuses": [
+     {
+      "name": "checkout",
+      "ready": true,
+      "restartCount": 0,
+      "image": "registry.internal/payments/checkout:1.8.2",
+      "imageID": "registry.internal/payments/checkout@sha256:5c4b8aa1",
+      "state": {
+       "running": {
+        "startedAt": "2026-09-16T01:12:05Z"
+       }
+      },
+      "lastState": {}
+     }
+    ]
+   }
+  },
+  {
+   "metadata": {
+    "name": "ledger-6a1b2-0",
+    "namespace": "payments",
+    "uid": "uid-pod-ledger-6a1b2-0",
+    "creationTimestamp": "2026-09-16T00:40:00Z",
+    "labels": {
+     "app": "ledger",
+     "pod-template-hash": "6a1b2"
+    },
+    "annotations": {},
+    "ownerReferences": [
+     {
+      "kind": "ReplicaSet",
+      "name": "ledger-6a1b2",
+      "uid": "uid-rs-ledger-6a1b2"
+     }
+    ]
+   },
+   "spec": {
+    "nodeName": "aks-apps-10003",
+    "containers": [
+     {
+      "name": "ledger",
+      "image": "registry.internal/payments/ledger:3.1.0",
+      "resources": {
+       "requests": {
+        "cpu": "200m",
+        "memory": "256Mi"
+       },
+       "limits": {
+        "cpu": "500m",
+        "memory": "512Mi"
+       }
+      }
+     }
+    ],
+    "volumes": []
+   },
+   "status": {
+    "phase": "Running",
+    "startTime": "2026-09-16T00:40:00Z",
+    "conditions": [
+     {
+      "type": "Ready",
+      "status": "True",
+      "lastTransitionTime": "2026-09-16T02:52:00Z",
+      "reason": ""
+     },
+     {
+      "type": "ContainersReady",
+      "status": "True",
+      "lastTransitionTime": "2026-09-16T02:52:00Z"
+     }
+    ],
+    "containerStatuses": [
+     {
+      "name": "ledger",
+      "ready": true,
+      "restartCount": 0,
+      "image": "registry.internal/payments/ledger:3.1.0",
+      "imageID": "registry.internal/payments/ledger@sha256:aa11",
+      "state": {
+       "running": {
+        "startedAt": "2026-09-16T00:40:00Z"
+       }
+      },
+      "lastState": {}
+     }
+    ]
+   }
+  },
+  {
+   "metadata": {
+    "name": "ledger-6a1b2-1",
+    "namespace": "payments",
+    "uid": "uid-pod-ledger-6a1b2-1",
+    "creationTimestamp": "2026-09-16T00:40:00Z",
+    "labels": {
+     "app": "ledger",
+     "pod-template-hash": "6a1b2"
+    },
+    "annotations": {},
+    "ownerReferences": [
+     {
+      "kind": "ReplicaSet",
+      "name": "ledger-6a1b2",
+      "uid": "uid-rs-ledger-6a1b2"
+     }
+    ]
+   },
+   "spec": {
+    "nodeName": "aks-apps-10004",
+    "containers": [
+     {
+      "name": "ledger",
+      "image": "registry.internal/payments/ledger:3.1.0",
+      "resources": {
+       "requests": {
+        "cpu": "200m",
+        "memory": "256Mi"
+       },
+       "limits": {
+        "cpu": "500m",
+        "memory": "512Mi"
+       }
+      }
+     }
+    ],
+    "volumes": []
+   },
+   "status": {
+    "phase": "Running",
+    "startTime": "2026-09-16T00:40:00Z",
+    "conditions": [
+     {
+      "type": "Ready",
+      "status": "True",
+      "lastTransitionTime": "2026-09-16T02:52:00Z",
+      "reason": ""
+     },
+     {
+      "type": "ContainersReady",
+      "status": "True",
+      "lastTransitionTime": "2026-09-16T02:52:00Z"
+     }
+    ],
+    "containerStatuses": [
+     {
+      "name": "ledger",
+      "ready": true,
+      "restartCount": 0,
+      "image": "registry.internal/payments/ledger:3.1.0",
+      "imageID": "registry.internal/payments/ledger@sha256:aa11",
+      "state": {
+       "running": {
+        "startedAt": "2026-09-16T00:40:00Z"
+       }
+      },
+      "lastState": {}
+     }
+    ]
+   }
+  }
+ ]
+}

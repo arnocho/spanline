@@ -1,0 +1,10 @@
+{
+ "name": "node-image-drift",
+ "description": "Same template hash everywhere: only the node image version separates failing from healthy.",
+ "contexts": [
+  "aks-prod-weu"
+ ],
+ "namespace": "payments",
+ "workload": "deploy/api",
+ "now": "2026-09-16T03:20:00Z"
+}

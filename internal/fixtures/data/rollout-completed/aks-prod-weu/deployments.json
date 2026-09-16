@@ -1,0 +1,67 @@
+{
+ "apiVersion": "v1",
+ "kind": "List",
+ "items": [
+  {
+   "kind": "Deployment",
+   "metadata": {
+    "name": "cart",
+    "namespace": "payments",
+    "uid": "uid-deploy-cart",
+    "creationTimestamp": "2026-09-16T00:50:00Z",
+    "labels": {
+     "app": "cart"
+    },
+    "annotations": {
+     "deployment.kubernetes.io/revision": "12"
+    },
+    "managedFields": [
+     {
+      "manager": "argocd-application-controller",
+      "operation": "Apply",
+      "time": "2026-09-16T00:50:00Z"
+     }
+    ]
+   },
+   "spec": {
+    "replicas": 6,
+    "selector": {
+     "matchLabels": {
+      "app": "cart"
+     }
+    },
+    "template": {
+     "metadata": {
+      "labels": {
+       "app": "cart"
+      },
+      "creationTimestamp": null
+     },
+     "spec": {
+      "containers": [
+       {
+        "name": "cart",
+        "image": "registry.internal/payments/cart:4.2.0",
+        "resources": {
+         "requests": {
+          "cpu": "200m",
+          "memory": "256Mi"
+         },
+         "limits": {
+          "cpu": "500m",
+          "memory": "256Mi"
+         }
+        }
+       }
+      ]
+     }
+    }
+   },
+   "status": {
+    "replicas": 6,
+    "readyReplicas": 0,
+    "availableReplicas": 0
+   }
+  }
+ ]
+}

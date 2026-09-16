@@ -1,0 +1,20 @@
+{
+ "apiVersion": "v1",
+ "kind": "List",
+ "items": [
+  {
+   "metadata": {
+    "name": "redis-data-redis-0",
+    "namespace": "orders",
+    "creationTimestamp": "2026-09-16T01:00:00Z"
+   },
+   "spec": {
+    "volumeName": "pv-redis-z2",
+    "storageClassName": "managed-csi"
+   },
+   "status": {
+    "phase": "Bound"
+   }
+  }
+ ]
+}

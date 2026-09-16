@@ -1,0 +1,1036 @@
+{
+ "format_version": "1.2",
+ "terraform_version": "1.9.8",
+ "resource_changes": [
+  {
+   "address": "azurerm_kubernetes_cluster_node_pool.apps",
+   "type": "azurerm_kubernetes_cluster_node_pool",
+   "name": "apps",
+   "provider_name": "registry.terraform.io/hashicorp/azurerm",
+   "change": {
+    "actions": [
+     "delete",
+     "create"
+    ],
+    "before": {
+     "name": "apps",
+     "vm_size": "Standard_D4s_v5",
+     "node_count": 6
+    },
+    "after": {
+     "name": "apps",
+     "vm_size": "Standard_D8s_v5",
+     "node_count": 6
+    },
+    "replace_paths": [
+     [
+      "vm_size"
+     ]
+    ]
+   },
+   "action_reason": "replace_because_cannot_update"
+  },
+  {
+   "address": "azurerm_kubernetes_cluster.main",
+   "type": "azurerm_kubernetes_cluster",
+   "name": "main",
+   "provider_name": "registry.terraform.io/hashicorp/azurerm",
+   "change": {
+    "actions": [
+     "update"
+    ],
+    "before": {
+     "name": "aks-prod-weu",
+     "upgrade_settings": [
+      {
+       "max_surge": "10%"
+      }
+     ]
+    },
+    "after": {
+     "name": "aks-prod-weu",
+     "upgrade_settings": [
+      {
+       "max_surge": "33%"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "address": "azurerm_public_ip.egress",
+   "type": "azurerm_public_ip",
+   "name": "egress",
+   "provider_name": "registry.terraform.io/hashicorp/azurerm",
+   "change": {
+    "actions": [
+     "create"
+    ],
+    "before": null,
+    "after": {
+     "name": "pip-egress-new"
+    }
+   }
+  },
+  {
+   "address": "azurerm_resource_group.rg[0]",
+   "type": "azurerm_resource_group",
+   "name": "rg",
+   "provider_name": "registry.terraform.io/hashicorp/azurerm",
+   "change": {
+    "actions": [
+     "update"
+    ],
+    "before": {
+     "name": "rg-0",
+     "tags": {
+      "owner": "platform"
+     }
+    },
+    "after": {
+     "name": "rg-0",
+     "tags": {
+      "owner": "platform",
+      "cost-center": "CC-42"
+     }
+    }
+   }
+  },
+  {
+   "address": "azurerm_resource_group.rg[1]",
+   "type": "azurerm_resource_group",
+   "name": "rg",
+   "provider_name": "registry.terraform.io/hashicorp/azurerm",
+   "change": {
+    "actions": [
+     "update"
+    ],
+    "before": {
+     "name": "rg-1",
+     "tags": {
+      "owner": "platform"
+     }
+    },
+    "after": {
+     "name": "rg-1",
+     "tags": {
+      "owner": "platform",
+      "cost-center": "CC-42"
+     }
+    }
+   }
+  },
+  {
+   "address": "azurerm_resource_group.rg[2]",
+   "type": "azurerm_resource_group",
+   "name": "rg",
+   "provider_name": "registry.terraform.io/hashicorp/azurerm",
+   "change": {
+    "actions": [
+     "update"
+    ],
+    "before": {
+     "name": "rg-2",
+     "tags": {
+      "owner": "platform"
+     }
+    },
+    "after": {
+     "name": "rg-2",
+     "tags": {
+      "owner": "platform",
+      "cost-center": "CC-42"
+     }
+    }
+   }
+  },
+  {
+   "address": "azurerm_resource_group.rg[3]",
+   "type": "azurerm_resource_group",
+   "name": "rg",
+   "provider_name": "registry.terraform.io/hashicorp/azurerm",
+   "change": {
+    "actions": [
+     "update"
+    ],
+    "before": {
+     "name": "rg-3",
+     "tags": {
+      "owner": "platform"
+     }
+    },
+    "after": {
+     "name": "rg-3",
+     "tags": {
+      "owner": "platform",
+      "cost-center": "CC-42"
+     }
+    }
+   }
+  },
+  {
+   "address": "azurerm_resource_group.rg[4]",
+   "type": "azurerm_resource_group",
+   "name": "rg",
+   "provider_name": "registry.terraform.io/hashicorp/azurerm",
+   "change": {
+    "actions": [
+     "update"
+    ],
+    "before": {
+     "name": "rg-4",
+     "tags": {
+      "owner": "platform"
+     }
+    },
+    "after": {
+     "name": "rg-4",
+     "tags": {
+      "owner": "platform",
+      "cost-center": "CC-42"
+     }
+    }
+   }
+  },
+  {
+   "address": "azurerm_resource_group.rg[5]",
+   "type": "azurerm_resource_group",
+   "name": "rg",
+   "provider_name": "registry.terraform.io/hashicorp/azurerm",
+   "change": {
+    "actions": [
+     "update"
+    ],
+    "before": {
+     "name": "rg-5",
+     "tags": {
+      "owner": "platform"
+     }
+    },
+    "after": {
+     "name": "rg-5",
+     "tags": {
+      "owner": "platform",
+      "cost-center": "CC-42"
+     }
+    }
+   }
+  },
+  {
+   "address": "azurerm_resource_group.rg[6]",
+   "type": "azurerm_resource_group",
+   "name": "rg",
+   "provider_name": "registry.terraform.io/hashicorp/azurerm",
+   "change": {
+    "actions": [
+     "update"
+    ],
+    "before": {
+     "name": "rg-6",
+     "tags": {
+      "owner": "platform"
+     }
+    },
+    "after": {
+     "name": "rg-6",
+     "tags": {
+      "owner": "platform",
+      "cost-center": "CC-42"
+     }
+    }
+   }
+  },
+  {
+   "address": "azurerm_resource_group.rg[7]",
+   "type": "azurerm_resource_group",
+   "name": "rg",
+   "provider_name": "registry.terraform.io/hashicorp/azurerm",
+   "change": {
+    "actions": [
+     "update"
+    ],
+    "before": {
+     "name": "rg-7",
+     "tags": {
+      "owner": "platform"
+     }
+    },
+    "after": {
+     "name": "rg-7",
+     "tags": {
+      "owner": "platform",
+      "cost-center": "CC-42"
+     }
+    }
+   }
+  },
+  {
+   "address": "azurerm_resource_group.rg[8]",
+   "type": "azurerm_resource_group",
+   "name": "rg",
+   "provider_name": "registry.terraform.io/hashicorp/azurerm",
+   "change": {
+    "actions": [
+     "update"
+    ],
+    "before": {
+     "name": "rg-8",
+     "tags": {
+      "owner": "platform"
+     }
+    },
+    "after": {
+     "name": "rg-8",
+     "tags": {
+      "owner": "platform",
+      "cost-center": "CC-42"
+     }
+    }
+   }
+  },
+  {
+   "address": "azurerm_resource_group.rg[9]",
+   "type": "azurerm_resource_group",
+   "name": "rg",
+   "provider_name": "registry.terraform.io/hashicorp/azurerm",
+   "change": {
+    "actions": [
+     "update"
+    ],
+    "before": {
+     "name": "rg-9",
+     "tags": {
+      "owner": "platform"
+     }
+    },
+    "after": {
+     "name": "rg-9",
+     "tags": {
+      "owner": "platform",
+      "cost-center": "CC-42"
+     }
+    }
+   }
+  },
+  {
+   "address": "azurerm_resource_group.rg[10]",
+   "type": "azurerm_resource_group",
+   "name": "rg",
+   "provider_name": "registry.terraform.io/hashicorp/azurerm",
+   "change": {
+    "actions": [
+     "update"
+    ],
+    "before": {
+     "name": "rg-10",
+     "tags": {
+      "owner": "platform"
+     }
+    },
+    "after": {
+     "name": "rg-10",
+     "tags": {
+      "owner": "platform",
+      "cost-center": "CC-42"
+     }
+    }
+   }
+  },
+  {
+   "address": "azurerm_resource_group.rg[11]",
+   "type": "azurerm_resource_group",
+   "name": "rg",
+   "provider_name": "registry.terraform.io/hashicorp/azurerm",
+   "change": {
+    "actions": [
+     "update"
+    ],
+    "before": {
+     "name": "rg-11",
+     "tags": {
+      "owner": "platform"
+     }
+    },
+    "after": {
+     "name": "rg-11",
+     "tags": {
+      "owner": "platform",
+      "cost-center": "CC-42"
+     }
+    }
+   }
+  },
+  {
+   "address": "azurerm_resource_group.rg[12]",
+   "type": "azurerm_resource_group",
+   "name": "rg",
+   "provider_name": "registry.terraform.io/hashicorp/azurerm",
+   "change": {
+    "actions": [
+     "update"
+    ],
+    "before": {
+     "name": "rg-12",
+     "tags": {
+      "owner": "platform"
+     }
+    },
+    "after": {
+     "name": "rg-12",
+     "tags": {
+      "owner": "platform",
+      "cost-center": "CC-42"
+     }
+    }
+   }
+  },
+  {
+   "address": "azurerm_resource_group.rg[13]",
+   "type": "azurerm_resource_group",
+   "name": "rg",
+   "provider_name": "registry.terraform.io/hashicorp/azurerm",
+   "change": {
+    "actions": [
+     "update"
+    ],
+    "before": {
+     "name": "rg-13",
+     "tags": {
+      "owner": "platform"
+     }
+    },
+    "after": {
+     "name": "rg-13",
+     "tags": {
+      "owner": "platform",
+      "cost-center": "CC-42"
+     }
+    }
+   }
+  },
+  {
+   "address": "azurerm_resource_group.rg[14]",
+   "type": "azurerm_resource_group",
+   "name": "rg",
+   "provider_name": "registry.terraform.io/hashicorp/azurerm",
+   "change": {
+    "actions": [
+     "update"
+    ],
+    "before": {
+     "name": "rg-14",
+     "tags": {
+      "owner": "platform"
+     }
+    },
+    "after": {
+     "name": "rg-14",
+     "tags": {
+      "owner": "platform",
+      "cost-center": "CC-42"
+     }
+    }
+   }
+  },
+  {
+   "address": "azurerm_resource_group.rg[15]",
+   "type": "azurerm_resource_group",
+   "name": "rg",
+   "provider_name": "registry.terraform.io/hashicorp/azurerm",
+   "change": {
+    "actions": [
+     "update"
+    ],
+    "before": {
+     "name": "rg-15",
+     "tags": {
+      "owner": "platform"
+     }
+    },
+    "after": {
+     "name": "rg-15",
+     "tags": {
+      "owner": "platform",
+      "cost-center": "CC-42"
+     }
+    }
+   }
+  },
+  {
+   "address": "azurerm_resource_group.rg[16]",
+   "type": "azurerm_resource_group",
+   "name": "rg",
+   "provider_name": "registry.terraform.io/hashicorp/azurerm",
+   "change": {
+    "actions": [
+     "update"
+    ],
+    "before": {
+     "name": "rg-16",
+     "tags": {
+      "owner": "platform"
+     }
+    },
+    "after": {
+     "name": "rg-16",
+     "tags": {
+      "owner": "platform",
+      "cost-center": "CC-42"
+     }
+    }
+   }
+  },
+  {
+   "address": "azurerm_resource_group.rg[17]",
+   "type": "azurerm_resource_group",
+   "name": "rg",
+   "provider_name": "registry.terraform.io/hashicorp/azurerm",
+   "change": {
+    "actions": [
+     "update"
+    ],
+    "before": {
+     "name": "rg-17",
+     "tags": {
+      "owner": "platform"
+     }
+    },
+    "after": {
+     "name": "rg-17",
+     "tags": {
+      "owner": "platform",
+      "cost-center": "CC-42"
+     }
+    }
+   }
+  },
+  {
+   "address": "azurerm_resource_group.rg[18]",
+   "type": "azurerm_resource_group",
+   "name": "rg",
+   "provider_name": "registry.terraform.io/hashicorp/azurerm",
+   "change": {
+    "actions": [
+     "update"
+    ],
+    "before": {
+     "name": "rg-18",
+     "tags": {
+      "owner": "platform"
+     }
+    },
+    "after": {
+     "name": "rg-18",
+     "tags": {
+      "owner": "platform",
+      "cost-center": "CC-42"
+     }
+    }
+   }
+  },
+  {
+   "address": "azurerm_resource_group.rg[19]",
+   "type": "azurerm_resource_group",
+   "name": "rg",
+   "provider_name": "registry.terraform.io/hashicorp/azurerm",
+   "change": {
+    "actions": [
+     "update"
+    ],
+    "before": {
+     "name": "rg-19",
+     "tags": {
+      "owner": "platform"
+     }
+    },
+    "after": {
+     "name": "rg-19",
+     "tags": {
+      "owner": "platform",
+      "cost-center": "CC-42"
+     }
+    }
+   }
+  },
+  {
+   "address": "azurerm_resource_group.rg[20]",
+   "type": "azurerm_resource_group",
+   "name": "rg",
+   "provider_name": "registry.terraform.io/hashicorp/azurerm",
+   "change": {
+    "actions": [
+     "update"
+    ],
+    "before": {
+     "name": "rg-20",
+     "tags": {
+      "owner": "platform"
+     }
+    },
+    "after": {
+     "name": "rg-20",
+     "tags": {
+      "owner": "platform",
+      "cost-center": "CC-42"
+     }
+    }
+   }
+  },
+  {
+   "address": "azurerm_resource_group.rg[21]",
+   "type": "azurerm_resource_group",
+   "name": "rg",
+   "provider_name": "registry.terraform.io/hashicorp/azurerm",
+   "change": {
+    "actions": [
+     "update"
+    ],
+    "before": {
+     "name": "rg-21",
+     "tags": {
+      "owner": "platform"
+     }
+    },
+    "after": {
+     "name": "rg-21",
+     "tags": {
+      "owner": "platform",
+      "cost-center": "CC-42"
+     }
+    }
+   }
+  },
+  {
+   "address": "azurerm_resource_group.rg[22]",
+   "type": "azurerm_resource_group",
+   "name": "rg",
+   "provider_name": "registry.terraform.io/hashicorp/azurerm",
+   "change": {
+    "actions": [
+     "update"
+    ],
+    "before": {
+     "name": "rg-22",
+     "tags": {
+      "owner": "platform"
+     }
+    },
+    "after": {
+     "name": "rg-22",
+     "tags": {
+      "owner": "platform",
+      "cost-center": "CC-42"
+     }
+    }
+   }
+  },
+  {
+   "address": "azurerm_resource_group.rg[23]",
+   "type": "azurerm_resource_group",
+   "name": "rg",
+   "provider_name": "registry.terraform.io/hashicorp/azurerm",
+   "change": {
+    "actions": [
+     "update"
+    ],
+    "before": {
+     "name": "rg-23",
+     "tags": {
+      "owner": "platform"
+     }
+    },
+    "after": {
+     "name": "rg-23",
+     "tags": {
+      "owner": "platform",
+      "cost-center": "CC-42"
+     }
+    }
+   }
+  },
+  {
+   "address": "azurerm_resource_group.rg[24]",
+   "type": "azurerm_resource_group",
+   "name": "rg",
+   "provider_name": "registry.terraform.io/hashicorp/azurerm",
+   "change": {
+    "actions": [
+     "update"
+    ],
+    "before": {
+     "name": "rg-24",
+     "tags": {
+      "owner": "platform"
+     }
+    },
+    "after": {
+     "name": "rg-24",
+     "tags": {
+      "owner": "platform",
+      "cost-center": "CC-42"
+     }
+    }
+   }
+  },
+  {
+   "address": "azurerm_resource_group.rg[25]",
+   "type": "azurerm_resource_group",
+   "name": "rg",
+   "provider_name": "registry.terraform.io/hashicorp/azurerm",
+   "change": {
+    "actions": [
+     "update"
+    ],
+    "before": {
+     "name": "rg-25",
+     "tags": {
+      "owner": "platform"
+     }
+    },
+    "after": {
+     "name": "rg-25",
+     "tags": {
+      "owner": "platform",
+      "cost-center": "CC-42"
+     }
+    }
+   }
+  },
+  {
+   "address": "azurerm_resource_group.rg[26]",
+   "type": "azurerm_resource_group",
+   "name": "rg",
+   "provider_name": "registry.terraform.io/hashicorp/azurerm",
+   "change": {
+    "actions": [
+     "update"
+    ],
+    "before": {
+     "name": "rg-26",
+     "tags": {
+      "owner": "platform"
+     }
+    },
+    "after": {
+     "name": "rg-26",
+     "tags": {
+      "owner": "platform",
+      "cost-center": "CC-42"
+     }
+    }
+   }
+  },
+  {
+   "address": "azurerm_resource_group.rg[27]",
+   "type": "azurerm_resource_group",
+   "name": "rg",
+   "provider_name": "registry.terraform.io/hashicorp/azurerm",
+   "change": {
+    "actions": [
+     "update"
+    ],
+    "before": {
+     "name": "rg-27",
+     "tags": {
+      "owner": "platform"
+     }
+    },
+    "after": {
+     "name": "rg-27",
+     "tags": {
+      "owner": "platform",
+      "cost-center": "CC-42"
+     }
+    }
+   }
+  },
+  {
+   "address": "azurerm_resource_group.rg[28]",
+   "type": "azurerm_resource_group",
+   "name": "rg",
+   "provider_name": "registry.terraform.io/hashicorp/azurerm",
+   "change": {
+    "actions": [
+     "update"
+    ],
+    "before": {
+     "name": "rg-28",
+     "tags": {
+      "owner": "platform"
+     }
+    },
+    "after": {
+     "name": "rg-28",
+     "tags": {
+      "owner": "platform",
+      "cost-center": "CC-42"
+     }
+    }
+   }
+  },
+  {
+   "address": "azurerm_resource_group.rg[29]",
+   "type": "azurerm_resource_group",
+   "name": "rg",
+   "provider_name": "registry.terraform.io/hashicorp/azurerm",
+   "change": {
+    "actions": [
+     "update"
+    ],
+    "before": {
+     "name": "rg-29",
+     "tags": {
+      "owner": "platform"
+     }
+    },
+    "after": {
+     "name": "rg-29",
+     "tags": {
+      "owner": "platform",
+      "cost-center": "CC-42"
+     }
+    }
+   }
+  },
+  {
+   "address": "azurerm_resource_group.rg[30]",
+   "type": "azurerm_resource_group",
+   "name": "rg",
+   "provider_name": "registry.terraform.io/hashicorp/azurerm",
+   "change": {
+    "actions": [
+     "update"
+    ],
+    "before": {
+     "name": "rg-30",
+     "tags": {
+      "owner": "platform"
+     }
+    },
+    "after": {
+     "name": "rg-30",
+     "tags": {
+      "owner": "platform",
+      "cost-center": "CC-42"
+     }
+    }
+   }
+  },
+  {
+   "address": "azurerm_resource_group.rg[31]",
+   "type": "azurerm_resource_group",
+   "name": "rg",
+   "provider_name": "registry.terraform.io/hashicorp/azurerm",
+   "change": {
+    "actions": [
+     "update"
+    ],
+    "before": {
+     "name": "rg-31",
+     "tags": {
+      "owner": "platform"
+     }
+    },
+    "after": {
+     "name": "rg-31",
+     "tags": {
+      "owner": "platform",
+      "cost-center": "CC-42"
+     }
+    }
+   }
+  },
+  {
+   "address": "azurerm_resource_group.rg[32]",
+   "type": "azurerm_resource_group",
+   "name": "rg",
+   "provider_name": "registry.terraform.io/hashicorp/azurerm",
+   "change": {
+    "actions": [
+     "update"
+    ],
+    "before": {
+     "name": "rg-32",
+     "tags": {
+      "owner": "platform"
+     }
+    },
+    "after": {
+     "name": "rg-32",
+     "tags": {
+      "owner": "platform",
+      "cost-center": "CC-42"
+     }
+    }
+   }
+  },
+  {
+   "address": "azurerm_resource_group.rg[33]",
+   "type": "azurerm_resource_group",
+   "name": "rg",
+   "provider_name": "registry.terraform.io/hashicorp/azurerm",
+   "change": {
+    "actions": [
+     "update"
+    ],
+    "before": {
+     "name": "rg-33",
+     "tags": {
+      "owner": "platform"
+     }
+    },
+    "after": {
+     "name": "rg-33",
+     "tags": {
+      "owner": "platform",
+      "cost-center": "CC-42"
+     }
+    }
+   }
+  },
+  {
+   "address": "azurerm_resource_group.rg[34]",
+   "type": "azurerm_resource_group",
+   "name": "rg",
+   "provider_name": "registry.terraform.io/hashicorp/azurerm",
+   "change": {
+    "actions": [
+     "update"
+    ],
+    "before": {
+     "name": "rg-34",
+     "tags": {
+      "owner": "platform"
+     }
+    },
+    "after": {
+     "name": "rg-34",
+     "tags": {
+      "owner": "platform",
+      "cost-center": "CC-42"
+     }
+    }
+   }
+  },
+  {
+   "address": "azurerm_resource_group.rg[35]",
+   "type": "azurerm_resource_group",
+   "name": "rg",
+   "provider_name": "registry.terraform.io/hashicorp/azurerm",
+   "change": {
+    "actions": [
+     "update"
+    ],
+    "before": {
+     "name": "rg-35",
+     "tags": {
+      "owner": "platform"
+     }
+    },
+    "after": {
+     "name": "rg-35",
+     "tags": {
+      "owner": "platform",
+      "cost-center": "CC-42"
+     }
+    }
+   }
+  },
+  {
+   "address": "azurerm_resource_group.rg[36]",
+   "type": "azurerm_resource_group",
+   "name": "rg",
+   "provider_name": "registry.terraform.io/hashicorp/azurerm",
+   "change": {
+    "actions": [
+     "update"
+    ],
+    "before": {
+     "name": "rg-36",
+     "tags": {
+      "owner": "platform"
+     }
+    },
+    "after": {
+     "name": "rg-36",
+     "tags": {
+      "owner": "platform",
+      "cost-center": "CC-42"
+     }
+    }
+   }
+  },
+  {
+   "address": "azurerm_resource_group.rg[37]",
+   "type": "azurerm_resource_group",
+   "name": "rg",
+   "provider_name": "registry.terraform.io/hashicorp/azurerm",
+   "change": {
+    "actions": [
+     "update"
+    ],
+    "before": {
+     "name": "rg-37",
+     "tags": {
+      "owner": "platform"
+     }
+    },
+    "after": {
+     "name": "rg-37",
+     "tags": {
+      "owner": "platform",
+      "cost-center": "CC-42"
+     }
+    }
+   }
+  },
+  {
+   "address": "azurerm_resource_group.rg[38]",
+   "type": "azurerm_resource_group",
+   "name": "rg",
+   "provider_name": "registry.terraform.io/hashicorp/azurerm",
+   "change": {
+    "actions": [
+     "update"
+    ],
+    "before": {
+     "name": "rg-38",
+     "tags": {
+      "owner": "platform"
+     }
+    },
+    "after": {
+     "name": "rg-38",
+     "tags": {
+      "owner": "platform",
+      "cost-center": "CC-42"
+     }
+    }
+   }
+  },
+  {
+   "address": "azurerm_resource_group.rg[39]",
+   "type": "azurerm_resource_group",
+   "name": "rg",
+   "provider_name": "registry.terraform.io/hashicorp/azurerm",
+   "change": {
+    "actions": [
+     "update"
+    ],
+    "before": {
+     "name": "rg-39",
+     "tags": {
+      "owner": "platform"
+     }
+    },
+    "after": {
+     "name": "rg-39",
+     "tags": {
+      "owner": "platform",
+      "cost-center": "CC-42"
+     }
+    }
+   }
+  }
+ ]
+}

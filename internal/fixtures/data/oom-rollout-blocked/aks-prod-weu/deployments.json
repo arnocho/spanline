@@ -1,0 +1,133 @@
+{
+ "apiVersion": "v1",
+ "kind": "List",
+ "items": [
+  {
+   "kind": "Deployment",
+   "metadata": {
+    "name": "checkout",
+    "namespace": "payments",
+    "uid": "uid-deploy-checkout",
+    "creationTimestamp": "2026-09-16T01:00:00Z",
+    "labels": {
+     "app": "checkout"
+    },
+    "annotations": {
+     "deployment.kubernetes.io/revision": "12"
+    },
+    "managedFields": [
+     {
+      "manager": "argocd-application-controller",
+      "operation": "Apply",
+      "time": "2026-09-16T02:51:10Z"
+     },
+     {
+      "manager": "kubectl-edit",
+      "operation": "Update",
+      "time": "2026-09-16T02:58:03Z"
+     }
+    ]
+   },
+   "spec": {
+    "replicas": 10,
+    "selector": {
+     "matchLabels": {
+      "app": "checkout"
+     }
+    },
+    "template": {
+     "metadata": {
+      "labels": {
+       "app": "checkout"
+      },
+      "creationTimestamp": null
+     },
+     "spec": {
+      "containers": [
+       {
+        "name": "checkout",
+        "image": "registry.internal/payments/checkout:1.9.0",
+        "resources": {
+         "requests": {
+          "cpu": "200m",
+          "memory": "256Mi"
+         },
+         "limits": {
+          "cpu": "500m",
+          "memory": "256Mi"
+         }
+        }
+       }
+      ]
+     }
+    }
+   },
+   "status": {
+    "replicas": 10,
+    "readyReplicas": 4,
+    "availableReplicas": 4
+   }
+  },
+  {
+   "kind": "Deployment",
+   "metadata": {
+    "name": "ledger",
+    "namespace": "payments",
+    "uid": "uid-deploy-ledger",
+    "creationTimestamp": "2026-09-16T00:40:00Z",
+    "labels": {
+     "app": "ledger"
+    },
+    "annotations": {
+     "deployment.kubernetes.io/revision": "4"
+    },
+    "managedFields": [
+     {
+      "manager": "argocd-application-controller",
+      "operation": "Apply",
+      "time": "2026-09-16T00:40:00Z"
+     }
+    ]
+   },
+   "spec": {
+    "replicas": 2,
+    "selector": {
+     "matchLabels": {
+      "app": "ledger"
+     }
+    },
+    "template": {
+     "metadata": {
+      "labels": {
+       "app": "ledger"
+      },
+      "creationTimestamp": null
+     },
+     "spec": {
+      "containers": [
+       {
+        "name": "ledger",
+        "image": "registry.internal/payments/ledger:3.1.0",
+        "resources": {
+         "requests": {
+          "cpu": "200m",
+          "memory": "256Mi"
+         },
+         "limits": {
+          "cpu": "500m",
+          "memory": "512Mi"
+         }
+        }
+       }
+      ]
+     }
+    }
+   },
+   "status": {
+    "replicas": 2,
+    "readyReplicas": 2,
+    "availableReplicas": 2
+   }
+  }
+ ]
+}

@@ -1,0 +1,170 @@
+{
+ "apiVersion": "v1",
+ "kind": "List",
+ "items": [
+  {
+   "metadata": {
+    "name": "onprem-worker-0",
+    "uid": "uid-node-onprem-worker-0",
+    "creationTimestamp": "2026-09-16T01:00:00Z",
+    "labels": {
+     "kubernetes.io/hostname": "onprem-worker-0",
+     "agentpool": "workers",
+     "kubernetes.io/os": "linux",
+     "node-role.kubernetes.io/worker": ""
+    }
+   },
+   "spec": {
+    "taints": [],
+    "providerID": "azure:///subscriptions/x/vm/onprem-worker-0"
+   },
+   "status": {
+    "nodeInfo": {
+     "osImage": "Ubuntu 22.04.5 LTS",
+     "kernelVersion": "5.14.0-427.el9",
+     "kubeletVersion": "v1.30.4",
+     "containerRuntimeVersion": "containerd://1.7.27"
+    },
+    "allocatable": {
+     "cpu": "7860m",
+     "memory": "30Gi",
+     "pods": "110"
+    },
+    "capacity": {
+     "cpu": "4",
+     "memory": "16Gi",
+     "pods": "110"
+    },
+    "conditions": [
+     {
+      "type": "Ready",
+      "status": "True"
+     }
+    ]
+   }
+  },
+  {
+   "metadata": {
+    "name": "onprem-worker-1",
+    "uid": "uid-node-onprem-worker-1",
+    "creationTimestamp": "2026-09-16T01:00:00Z",
+    "labels": {
+     "kubernetes.io/hostname": "onprem-worker-1",
+     "agentpool": "workers",
+     "kubernetes.io/os": "linux",
+     "node-role.kubernetes.io/worker": ""
+    }
+   },
+   "spec": {
+    "taints": [],
+    "providerID": "azure:///subscriptions/x/vm/onprem-worker-1"
+   },
+   "status": {
+    "nodeInfo": {
+     "osImage": "Ubuntu 22.04.5 LTS",
+     "kernelVersion": "5.14.0-427.el9",
+     "kubeletVersion": "v1.30.4",
+     "containerRuntimeVersion": "containerd://1.7.27"
+    },
+    "allocatable": {
+     "cpu": "7860m",
+     "memory": "30Gi",
+     "pods": "110"
+    },
+    "capacity": {
+     "cpu": "4",
+     "memory": "16Gi",
+     "pods": "110"
+    },
+    "conditions": [
+     {
+      "type": "Ready",
+      "status": "True"
+     }
+    ]
+   }
+  },
+  {
+   "metadata": {
+    "name": "onprem-worker-2",
+    "uid": "uid-node-onprem-worker-2",
+    "creationTimestamp": "2026-09-16T01:00:00Z",
+    "labels": {
+     "kubernetes.io/hostname": "onprem-worker-2",
+     "agentpool": "workers",
+     "kubernetes.io/os": "linux",
+     "node-role.kubernetes.io/worker": ""
+    }
+   },
+   "spec": {
+    "taints": [],
+    "providerID": "azure:///subscriptions/x/vm/onprem-worker-2"
+   },
+   "status": {
+    "nodeInfo": {
+     "osImage": "Ubuntu 22.04.5 LTS",
+     "kernelVersion": "5.14.0-427.el9",
+     "kubeletVersion": "v1.30.4",
+     "containerRuntimeVersion": "containerd://1.7.27"
+    },
+    "allocatable": {
+     "cpu": "7860m",
+     "memory": "30Gi",
+     "pods": "110"
+    },
+    "capacity": {
+     "cpu": "4",
+     "memory": "16Gi",
+     "pods": "110"
+    },
+    "conditions": [
+     {
+      "type": "Ready",
+      "status": "True"
+     }
+    ]
+   }
+  },
+  {
+   "metadata": {
+    "name": "onprem-worker-3",
+    "uid": "uid-node-onprem-worker-3",
+    "creationTimestamp": "2026-09-16T01:00:00Z",
+    "labels": {
+     "kubernetes.io/hostname": "onprem-worker-3",
+     "agentpool": "workers",
+     "kubernetes.io/os": "linux",
+     "node-role.kubernetes.io/worker": ""
+    }
+   },
+   "spec": {
+    "taints": [],
+    "providerID": "azure:///subscriptions/x/vm/onprem-worker-3"
+   },
+   "status": {
+    "nodeInfo": {
+     "osImage": "Ubuntu 22.04.5 LTS",
+     "kernelVersion": "5.14.0-427.el9",
+     "kubeletVersion": "v1.30.4",
+     "containerRuntimeVersion": "containerd://1.7.27"
+    },
+    "allocatable": {
+     "cpu": "7860m",
+     "memory": "30Gi",
+     "pods": "110"
+    },
+    "capacity": {
+     "cpu": "4",
+     "memory": "16Gi",
+     "pods": "110"
+    },
+    "conditions": [
+     {
+      "type": "Ready",
+      "status": "False"
+     }
+    ]
+   }
+  }
+ ]
+}

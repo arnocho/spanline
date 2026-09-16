@@ -1,0 +1,10 @@
+{
+ "name": "rollout-completed",
+ "description": "Rollout completed then failed: no healthy cohort, the revision fallback runs.",
+ "contexts": [
+  "aks-prod-weu"
+ ],
+ "namespace": "payments",
+ "workload": "deploy/cart",
+ "now": "2026-09-16T03:20:00Z"
+}

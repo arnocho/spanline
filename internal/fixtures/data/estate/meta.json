@@ -1,0 +1,11 @@
+{
+ "name": "estate",
+ "description": "Two clusters: AKS owned by Terraform, and an on-prem cluster delivered by Helm.",
+ "contexts": [
+  "aks-prod-weu",
+  "onprem-int"
+ ],
+ "now": "2026-09-16T03:20:00Z",
+ "tfstate": "terraform/state.json",
+ "tfplan": "terraform/plan.json"
+}

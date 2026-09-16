@@ -1,0 +1,589 @@
+{
+ "apiVersion": "v1",
+ "kind": "List",
+ "items": [
+  {
+   "metadata": {
+    "name": "payments-api-77f4a-0",
+    "namespace": "payments",
+    "uid": "uid-pod-payments-api-77f4a-0",
+    "creationTimestamp": "2026-09-16T01:05:00Z",
+    "labels": {
+     "app": "payments-api",
+     "pod-template-hash": "77f4a"
+    },
+    "annotations": {},
+    "ownerReferences": [
+     {
+      "kind": "ReplicaSet",
+      "name": "payments-api-77f4a",
+      "uid": "uid-rs-payments-api-77f4a"
+     }
+    ]
+   },
+   "spec": {
+    "nodeName": "aks-apps-10000",
+    "containers": [
+     {
+      "name": "payments-api",
+      "image": "registry.internal/payments/api:2.4.0",
+      "resources": {
+       "requests": {
+        "cpu": "200m",
+        "memory": "256Mi"
+       },
+       "limits": {
+        "cpu": "500m",
+        "memory": "512Mi"
+       }
+      }
+     }
+    ],
+    "volumes": []
+   },
+   "status": {
+    "phase": "Running",
+    "startTime": "2026-09-16T01:05:00Z",
+    "conditions": [
+     {
+      "type": "Ready",
+      "status": "True",
+      "lastTransitionTime": "2026-09-16T02:52:00Z",
+      "reason": ""
+     },
+     {
+      "type": "ContainersReady",
+      "status": "True",
+      "lastTransitionTime": "2026-09-16T02:52:00Z"
+     }
+    ],
+    "containerStatuses": [
+     {
+      "name": "payments-api",
+      "ready": true,
+      "restartCount": 0,
+      "image": "registry.internal/payments/api:2.4.0",
+      "imageID": "registry.internal/payments/api@sha256:bb22",
+      "state": {
+       "running": {
+        "startedAt": "2026-09-16T01:05:00Z"
+       }
+      },
+      "lastState": {}
+     }
+    ]
+   }
+  },
+  {
+   "metadata": {
+    "name": "payments-api-77f4a-1",
+    "namespace": "payments",
+    "uid": "uid-pod-payments-api-77f4a-1",
+    "creationTimestamp": "2026-09-16T01:05:00Z",
+    "labels": {
+     "app": "payments-api",
+     "pod-template-hash": "77f4a"
+    },
+    "annotations": {},
+    "ownerReferences": [
+     {
+      "kind": "ReplicaSet",
+      "name": "payments-api-77f4a",
+      "uid": "uid-rs-payments-api-77f4a"
+     }
+    ]
+   },
+   "spec": {
+    "nodeName": "aks-apps-10001",
+    "containers": [
+     {
+      "name": "payments-api",
+      "image": "registry.internal/payments/api:2.4.0",
+      "resources": {
+       "requests": {
+        "cpu": "200m",
+        "memory": "256Mi"
+       },
+       "limits": {
+        "cpu": "500m",
+        "memory": "512Mi"
+       }
+      }
+     }
+    ],
+    "volumes": []
+   },
+   "status": {
+    "phase": "Running",
+    "startTime": "2026-09-16T01:05:00Z",
+    "conditions": [
+     {
+      "type": "Ready",
+      "status": "True",
+      "lastTransitionTime": "2026-09-16T02:52:00Z",
+      "reason": ""
+     },
+     {
+      "type": "ContainersReady",
+      "status": "True",
+      "lastTransitionTime": "2026-09-16T02:52:00Z"
+     }
+    ],
+    "containerStatuses": [
+     {
+      "name": "payments-api",
+      "ready": true,
+      "restartCount": 0,
+      "image": "registry.internal/payments/api:2.4.0",
+      "imageID": "registry.internal/payments/api@sha256:bb22",
+      "state": {
+       "running": {
+        "startedAt": "2026-09-16T01:05:00Z"
+       }
+      },
+      "lastState": {}
+     }
+    ]
+   }
+  },
+  {
+   "metadata": {
+    "name": "payments-api-77f4a-2",
+    "namespace": "payments",
+    "uid": "uid-pod-payments-api-77f4a-2",
+    "creationTimestamp": "2026-09-16T01:05:00Z",
+    "labels": {
+     "app": "payments-api",
+     "pod-template-hash": "77f4a"
+    },
+    "annotations": {},
+    "ownerReferences": [
+     {
+      "kind": "ReplicaSet",
+      "name": "payments-api-77f4a",
+      "uid": "uid-rs-payments-api-77f4a"
+     }
+    ]
+   },
+   "spec": {
+    "nodeName": "aks-apps-10002",
+    "containers": [
+     {
+      "name": "payments-api",
+      "image": "registry.internal/payments/api:2.4.0",
+      "resources": {
+       "requests": {
+        "cpu": "200m",
+        "memory": "256Mi"
+       },
+       "limits": {
+        "cpu": "500m",
+        "memory": "512Mi"
+       }
+      }
+     }
+    ],
+    "volumes": []
+   },
+   "status": {
+    "phase": "Running",
+    "startTime": "2026-09-16T01:05:00Z",
+    "conditions": [
+     {
+      "type": "Ready",
+      "status": "True",
+      "lastTransitionTime": "2026-09-16T02:52:00Z",
+      "reason": ""
+     },
+     {
+      "type": "ContainersReady",
+      "status": "True",
+      "lastTransitionTime": "2026-09-16T02:52:00Z"
+     }
+    ],
+    "containerStatuses": [
+     {
+      "name": "payments-api",
+      "ready": true,
+      "restartCount": 0,
+      "image": "registry.internal/payments/api:2.4.0",
+      "imageID": "registry.internal/payments/api@sha256:bb22",
+      "state": {
+       "running": {
+        "startedAt": "2026-09-16T01:05:00Z"
+       }
+      },
+      "lastState": {}
+     }
+    ]
+   }
+  },
+  {
+   "metadata": {
+    "name": "payments-api-77f4a-3",
+    "namespace": "payments",
+    "uid": "uid-pod-payments-api-77f4a-3",
+    "creationTimestamp": "2026-09-16T01:05:00Z",
+    "labels": {
+     "app": "payments-api",
+     "pod-template-hash": "77f4a"
+    },
+    "annotations": {},
+    "ownerReferences": [
+     {
+      "kind": "ReplicaSet",
+      "name": "payments-api-77f4a",
+      "uid": "uid-rs-payments-api-77f4a"
+     }
+    ]
+   },
+   "spec": {
+    "nodeName": "aks-apps-10003",
+    "containers": [
+     {
+      "name": "payments-api",
+      "image": "registry.internal/payments/api:2.4.0",
+      "resources": {
+       "requests": {
+        "cpu": "200m",
+        "memory": "256Mi"
+       },
+       "limits": {
+        "cpu": "500m",
+        "memory": "512Mi"
+       }
+      }
+     }
+    ],
+    "volumes": []
+   },
+   "status": {
+    "phase": "Running",
+    "startTime": "2026-09-16T01:05:00Z",
+    "conditions": [
+     {
+      "type": "Ready",
+      "status": "True",
+      "lastTransitionTime": "2026-09-16T02:52:00Z",
+      "reason": ""
+     },
+     {
+      "type": "ContainersReady",
+      "status": "True",
+      "lastTransitionTime": "2026-09-16T02:52:00Z"
+     }
+    ],
+    "containerStatuses": [
+     {
+      "name": "payments-api",
+      "ready": true,
+      "restartCount": 0,
+      "image": "registry.internal/payments/api:2.4.0",
+      "imageID": "registry.internal/payments/api@sha256:bb22",
+      "state": {
+       "running": {
+        "startedAt": "2026-09-16T01:05:00Z"
+       }
+      },
+      "lastState": {}
+     }
+    ]
+   }
+  },
+  {
+   "metadata": {
+    "name": "orders-5b9c3-0",
+    "namespace": "orders",
+    "uid": "uid-pod-orders-5b9c3-0",
+    "creationTimestamp": "2026-09-16T01:20:00Z",
+    "labels": {
+     "app": "orders",
+     "pod-template-hash": "5b9c3"
+    },
+    "annotations": {},
+    "ownerReferences": [
+     {
+      "kind": "ReplicaSet",
+      "name": "orders-5b9c3",
+      "uid": "uid-rs-orders-5b9c3"
+     }
+    ]
+   },
+   "spec": {
+    "nodeName": "aks-apps-10004",
+    "containers": [
+     {
+      "name": "orders",
+      "image": "registry.internal/orders/api:1.2.0",
+      "resources": {
+       "requests": {
+        "cpu": "200m",
+        "memory": "256Mi"
+       },
+       "limits": {
+        "cpu": "500m",
+        "memory": "512Mi"
+       }
+      }
+     }
+    ],
+    "volumes": []
+   },
+   "status": {
+    "phase": "Running",
+    "startTime": "2026-09-16T01:20:00Z",
+    "conditions": [
+     {
+      "type": "Ready",
+      "status": "True",
+      "lastTransitionTime": "2026-09-16T02:52:00Z",
+      "reason": ""
+     },
+     {
+      "type": "ContainersReady",
+      "status": "True",
+      "lastTransitionTime": "2026-09-16T02:52:00Z"
+     }
+    ],
+    "containerStatuses": [
+     {
+      "name": "orders",
+      "ready": true,
+      "restartCount": 0,
+      "image": "registry.internal/orders/api:1.2.0",
+      "imageID": "registry.internal/orders/api@sha256:dd44",
+      "state": {
+       "running": {
+        "startedAt": "2026-09-16T01:20:00Z"
+       }
+      },
+      "lastState": {}
+     }
+    ]
+   }
+  },
+  {
+   "metadata": {
+    "name": "redis-0",
+    "namespace": "orders",
+    "uid": "uid-pod-redis-0",
+    "creationTimestamp": "2026-09-16T01:25:00Z",
+    "labels": {
+     "app": "redis",
+     "pod-template-hash": ""
+    },
+    "annotations": {},
+    "ownerReferences": [
+     {
+      "kind": "ReplicaSet",
+      "name": "redis",
+      "uid": "uid-rs-redis"
+     }
+    ]
+   },
+   "spec": {
+    "nodeName": "aks-apps-10001",
+    "containers": [
+     {
+      "name": "redis",
+      "image": "docker.io/library/redis:7.2",
+      "resources": {
+       "requests": {
+        "cpu": "200m",
+        "memory": "256Mi"
+       },
+       "limits": {
+        "cpu": "500m",
+        "memory": "512Mi"
+       }
+      }
+     }
+    ],
+    "volumes": [
+     {
+      "name": "data",
+      "persistentVolumeClaim": {
+       "claimName": "redis-data-redis-0"
+      }
+     }
+    ]
+   },
+   "status": {
+    "phase": "Running",
+    "startTime": "2026-09-16T01:25:00Z",
+    "conditions": [
+     {
+      "type": "Ready",
+      "status": "True",
+      "lastTransitionTime": "2026-09-16T02:52:00Z",
+      "reason": ""
+     },
+     {
+      "type": "ContainersReady",
+      "status": "True",
+      "lastTransitionTime": "2026-09-16T02:52:00Z"
+     }
+    ],
+    "containerStatuses": [
+     {
+      "name": "redis",
+      "ready": true,
+      "restartCount": 0,
+      "image": "docker.io/library/redis:7.2",
+      "imageID": "docker.io/library/redis@sha256:ee55",
+      "state": {
+       "running": {
+        "startedAt": "2026-09-16T01:25:00Z"
+       }
+      },
+      "lastState": {}
+     }
+    ]
+   }
+  },
+  {
+   "metadata": {
+    "name": "warehouse-2c8d1-0",
+    "namespace": "analytics",
+    "uid": "uid-pod-warehouse-2c8d1-0",
+    "creationTimestamp": "2026-09-16T00:55:00Z",
+    "labels": {
+     "app": "warehouse",
+     "pod-template-hash": "2c8d1"
+    },
+    "annotations": {},
+    "ownerReferences": [
+     {
+      "kind": "ReplicaSet",
+      "name": "warehouse-2c8d1",
+      "uid": "uid-rs-warehouse-2c8d1"
+     }
+    ]
+   },
+   "spec": {
+    "nodeName": "aks-data-30000",
+    "containers": [
+     {
+      "name": "warehouse",
+      "image": "registry.internal/analytics/warehouse:0.9.1",
+      "resources": {
+       "requests": {
+        "cpu": "2",
+        "memory": "8Gi"
+       },
+       "limits": {
+        "cpu": "3",
+        "memory": "12Gi"
+       }
+      }
+     }
+    ],
+    "volumes": []
+   },
+   "status": {
+    "phase": "Running",
+    "startTime": "2026-09-16T00:55:00Z",
+    "conditions": [
+     {
+      "type": "Ready",
+      "status": "True",
+      "lastTransitionTime": "2026-09-16T02:52:00Z",
+      "reason": ""
+     },
+     {
+      "type": "ContainersReady",
+      "status": "True",
+      "lastTransitionTime": "2026-09-16T02:52:00Z"
+     }
+    ],
+    "containerStatuses": [
+     {
+      "name": "warehouse",
+      "ready": true,
+      "restartCount": 0,
+      "image": "registry.internal/analytics/warehouse:0.9.1",
+      "imageID": "registry.internal/analytics/warehouse@sha256:ff66",
+      "state": {
+       "running": {
+        "startedAt": "2026-09-16T00:55:00Z"
+       }
+      },
+      "lastState": {}
+     }
+    ]
+   }
+  },
+  {
+   "metadata": {
+    "name": "warehouse-2c8d1-1",
+    "namespace": "analytics",
+    "uid": "uid-pod-warehouse-2c8d1-1",
+    "creationTimestamp": "2026-09-16T00:55:00Z",
+    "labels": {
+     "app": "warehouse",
+     "pod-template-hash": "2c8d1"
+    },
+    "annotations": {},
+    "ownerReferences": [
+     {
+      "kind": "ReplicaSet",
+      "name": "warehouse-2c8d1",
+      "uid": "uid-rs-warehouse-2c8d1"
+     }
+    ]
+   },
+   "spec": {
+    "nodeName": "aks-data-30000",
+    "containers": [
+     {
+      "name": "warehouse",
+      "image": "registry.internal/analytics/warehouse:0.9.1",
+      "resources": {
+       "requests": {
+        "cpu": "2",
+        "memory": "8Gi"
+       },
+       "limits": {
+        "cpu": "3",
+        "memory": "12Gi"
+       }
+      }
+     }
+    ],
+    "volumes": []
+   },
+   "status": {
+    "phase": "Running",
+    "startTime": "2026-09-16T00:55:00Z",
+    "conditions": [
+     {
+      "type": "Ready",
+      "status": "True",
+      "lastTransitionTime": "2026-09-16T02:52:00Z",
+      "reason": ""
+     },
+     {
+      "type": "ContainersReady",
+      "status": "True",
+      "lastTransitionTime": "2026-09-16T02:52:00Z"
+     }
+    ],
+    "containerStatuses": [
+     {
+      "name": "warehouse",
+      "ready": true,
+      "restartCount": 0,
+      "image": "registry.internal/analytics/warehouse:0.9.1",
+      "imageID": "registry.internal/analytics/warehouse@sha256:ff66",
+      "state": {
+       "running": {
+        "startedAt": "2026-09-16T00:55:00Z"
+       }
+      },
+      "lastState": {}
+     }
+    ]
+   }
+  }
+ ]
+}

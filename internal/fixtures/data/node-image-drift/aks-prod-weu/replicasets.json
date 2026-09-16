@@ -1,0 +1,76 @@
+{
+ "apiVersion": "v1",
+ "kind": "List",
+ "items": [
+  {
+   "metadata": {
+    "name": "api-8f2c1",
+    "namespace": "payments",
+    "uid": "uid-rs-api-8f2c1",
+    "creationTimestamp": "2026-09-16T01:05:00Z",
+    "labels": {
+     "app": "api",
+     "pod-template-hash": "8f2c1"
+    },
+    "annotations": {
+     "deployment.kubernetes.io/revision": "7"
+    },
+    "ownerReferences": [
+     {
+      "kind": "Deployment",
+      "name": "api",
+      "uid": "uid-deploy-api"
+     }
+    ],
+    "managedFields": [
+     {
+      "manager": "argocd-application-controller",
+      "operation": "Apply",
+      "time": "2026-09-16T01:05:00Z"
+     }
+    ]
+   },
+   "spec": {
+    "replicas": 6,
+    "selector": {
+     "matchLabels": {
+      "app": "api",
+      "pod-template-hash": "8f2c1"
+     }
+    },
+    "template": {
+     "metadata": {
+      "labels": {
+       "app": "api",
+       "pod-template-hash": "8f2c1"
+      },
+      "creationTimestamp": null
+     },
+     "spec": {
+      "containers": [
+       {
+        "name": "api",
+        "image": "registry.internal/payments/api:2.4.0",
+        "resources": {
+         "requests": {
+          "cpu": "200m",
+          "memory": "256Mi"
+         },
+         "limits": {
+          "cpu": "500m",
+          "memory": "1Gi"
+         }
+        }
+       }
+      ]
+     }
+    }
+   },
+   "status": {
+    "replicas": 6,
+    "readyReplicas": 3,
+    "availableReplicas": 3
+   }
+  }
+ ]
+}
