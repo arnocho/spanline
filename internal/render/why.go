@@ -3,11 +3,14 @@ package render
 import (
 	"strings"
 
+	"github.com/arnocho/spanline/internal/brief"
 	"github.com/arnocho/spanline/internal/result"
 )
 
-// WhyText renders the cohort report for a terminal: what separates the failing pods from
-// the healthy ones, and which change lines up with it. Suspects keep the report's ranking.
+// WhyText renders the cohort report for a terminal. By default it prints the short screen:
+// what separates the failing pods from the healthy ones, the few facts that carry that
+// answer, and one line naming what is held back. With Options.Details the same screen is
+// followed by everything the report holds. Suspects keep the report's ranking in both.
 func WhyText(r *result.WhyReport, o Options) string {
 	p := newPalette(o)
 	var b strings.Builder
@@ -18,16 +21,24 @@ func WhyText(r *result.WhyReport, o Options) string {
 	}
 	w := o.width()
 
-	sub := []string{kv("generated", ts(r.GeneratedAt))}
-	if strings.TrimSpace(r.CohortKey) != "" {
-		sub = append(sub, kv("cohort key", r.CohortKey))
-	}
-	header(&b, p, o, "spanline why", []string{
+	br := brief.Why(r)
+	briefHead(&b, p, o, "spanline why"+gutter+strings.Join([]string{
 		kv("context", r.Context),
 		kv("namespace", r.Namespace),
 		kv("workload", r.Workload),
 		kv("source", string(r.Mode)),
-	}, sub)
+	}, gutter), br)
+	briefKeys(&b, p, o, br.Key)
+	heldBack(&b, p, o, br.More)
+	if !o.Details {
+		return out(&b)
+	}
+
+	section(&b, p, "details")
+	writeFields(&b, [][2]string{
+		{"generated", ts(r.GeneratedAt)},
+		{"cohort key", orEmpty(r.CohortKey)},
+	}, indent1)
 
 	section(&b, p, "onset")
 	writeFields(&b, [][2]string{
@@ -134,6 +145,7 @@ func WhyMarkdown(r *result.WhyReport) string {
 	}
 
 	b.WriteString("# spanline why: " + orEmpty(r.Namespace) + "/" + orEmpty(r.Workload) + "\n")
+	mdBrief(&b, brief.Why(r))
 
 	rows := [][]string{
 		{"context", r.Context},
@@ -149,7 +161,6 @@ func WhyMarkdown(r *result.WhyReport) string {
 		[]string{"onset signal", r.OnsetSignal},
 		[]string{"generated", ts(r.GeneratedAt)},
 	)
-	b.WriteString("\n")
 	mdTable(&b, []string{"field", "value"}, rows)
 
 	mdHeading(&b, 2, "Cohorts")

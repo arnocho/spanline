@@ -3,11 +3,14 @@ package render
 import (
 	"strings"
 
+	"github.com/arnocho/spanline/internal/brief"
 	"github.com/arnocho/spanline/internal/result"
 )
 
 // ImpactText renders the impact report for a terminal: what breaks if these nodes go away,
-// or if this plan is applied. The last line is always the verdict and its exit code.
+// or if this plan is applied. By default it prints the short screen only; Options.Details
+// adds the findings, their evidence and the coverage underneath. The last line is always
+// the verdict and its exit code, in both forms.
 func ImpactText(r *result.ImpactReport, o Options) string {
 	p := newPalette(o)
 	var b strings.Builder
@@ -18,41 +21,50 @@ func ImpactText(r *result.ImpactReport, o Options) string {
 	}
 	w := o.width()
 
-	header(&b, p, o, "spanline impact", []string{
+	br := brief.Impact(r)
+	briefHead(&b, p, o, "spanline impact"+gutter+strings.Join([]string{
 		kv("context", r.Context),
 		kv("source", r.Source),
-	}, []string{
 		kv("snapshot", ts(r.SnapshotAt)),
-		kv("expires", ts(r.ExpiresAt)),
-		kv("generated", ts(r.GeneratedAt)),
-	})
+	}, gutter), br)
+	briefKeys(&b, p, o, br.Key)
+	heldBack(&b, p, o, withGaps(br.More, len(r.Gaps)))
 
-	section(&b, p, "scope")
-	fields := [][2]string{{"nodes", itoa(len(r.Nodes))}}
-	if strings.TrimSpace(r.PlanSHA) != "" {
-		fields = append(fields, [2]string{"plan sha", r.PlanSHA})
+	if o.Details {
+		section(&b, p, "details")
+		writeFields(&b, [][2]string{
+			{"snapshot", ts(r.SnapshotAt)},
+			{"expires", ts(r.ExpiresAt)},
+			{"generated", ts(r.GeneratedAt)},
+		}, indent1)
+
+		section(&b, p, "scope")
+		fields := [][2]string{{"nodes", itoa(len(r.Nodes))}}
+		if strings.TrimSpace(r.PlanSHA) != "" {
+			fields = append(fields, [2]string{"plan sha", r.PlanSHA})
+		}
+		if strings.TrimSpace(r.PlanSummary) != "" {
+			fields = append(fields, [2]string{"plan", r.PlanSummary})
+		}
+		writeFields(&b, fields, indent1)
+		writeInline(&b, "node list", r.Nodes, w, indent1)
+
+		if len(r.Mapping) > 0 {
+			section(&b, p, "mapping")
+			writeList(&b, r.Mapping, w, indent1)
+		}
+
+		section(&b, p, "findings")
+		writeFindings(&b, p, o, r.Findings)
+
+		if len(r.Ignored) > 0 {
+			section(&b, p, "ignored")
+			writeList(&b, r.Ignored, w, indent1)
+		}
+
+		writeNarrative(&b, p, o, r.Narrative)
+		writeGaps(&b, p, o, r.Gaps)
 	}
-	if strings.TrimSpace(r.PlanSummary) != "" {
-		fields = append(fields, [2]string{"plan", r.PlanSummary})
-	}
-	writeFields(&b, fields, indent1)
-	writeInline(&b, "node list", r.Nodes, w, indent1)
-
-	if len(r.Mapping) > 0 {
-		section(&b, p, "mapping")
-		writeList(&b, r.Mapping, w, indent1)
-	}
-
-	section(&b, p, "findings")
-	writeFindings(&b, p, o, r.Findings)
-
-	if len(r.Ignored) > 0 {
-		section(&b, p, "ignored")
-		writeList(&b, r.Ignored, w, indent1)
-	}
-
-	writeNarrative(&b, p, o, r.Narrative)
-	writeGaps(&b, p, o, r.Gaps)
 
 	// The verdict closes the report, so a truncated terminal still shows the exit code.
 	b.WriteString("\n")
@@ -95,7 +107,8 @@ func ImpactMarkdown(r *result.ImpactReport) string {
 		return out(&b)
 	}
 
-	b.WriteString("# spanline impact: " + orEmpty(r.Context) + "\n\n")
+	b.WriteString("# spanline impact: " + orEmpty(r.Context) + "\n")
+	mdBrief(&b, brief.Impact(r))
 
 	rows := [][]string{
 		{"context", r.Context},

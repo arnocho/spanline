@@ -27,12 +27,14 @@ type Options struct {
 	Color   bool // ANSI colour on
 	Width   int  // terminal width, 0 means 100
 	Compact bool // drop evidence lines
+	Details bool // print the full report under the short screen, instead of holding it back
 }
 
-// DefaultOptions is the safe default: no colour, 100 columns, evidence kept.
-// A caller that knows it writes to a terminal sets Color itself.
+// DefaultOptions is the safe default: no colour, 100 columns, evidence kept, short screen.
+// A caller that knows it writes to a terminal sets Color itself, and a caller that was asked
+// for everything sets Details.
 func DefaultOptions() Options {
-	return Options{Color: false, Width: defaultWidth, Compact: false}
+	return Options{Color: false, Width: defaultWidth, Compact: false, Details: false}
 }
 
 const (
@@ -87,6 +89,25 @@ func (p palette) apply(s lipgloss.Style, text string) string {
 func (p palette) bold(text string) string { return p.apply(styleBold, text) }
 func (p palette) dim(text string) string  { return p.apply(styleDim, text) }
 
+// severityStyle maps a severity to its colour. An unknown severity gets no style at all,
+// so an unfamiliar verdict is never dressed up as one of ours.
+func severityStyle(s result.Severity) lipgloss.Style {
+	switch s {
+	case result.Outage:
+		return styleOutage
+	case result.Disruption:
+		return styleDisruption
+	case result.Risk:
+		return styleRisk
+	case result.NotAssessed:
+		return styleNotAssessed
+	case result.Info:
+		return styleInfo
+	default:
+		return lipgloss.NewStyle()
+	}
+}
+
 // severity spells the severity out in full. An absent severity prints as NOT ASSESSED,
 // never as a blank column, since NOT ASSESSED is never an implicit pass.
 func (p palette) severity(s result.Severity) string {
@@ -95,19 +116,17 @@ func (p palette) severity(s result.Severity) string {
 		s = result.NotAssessed
 		text = string(result.NotAssessed)
 	}
+	return p.apply(severityStyle(s), text)
+}
+
+// headline styles the one sentence that is the answer: bold, and coloured by its severity.
+// INFO stays bold rather than faint, because the answer is never the dimmest line on screen.
+func (p palette) headline(s result.Severity, text string) string {
 	switch s {
-	case result.Outage:
-		return p.apply(styleOutage, text)
-	case result.Disruption:
-		return p.apply(styleDisruption, text)
-	case result.Risk:
-		return p.apply(styleRisk, text)
-	case result.NotAssessed:
-		return p.apply(styleNotAssessed, text)
-	case result.Info:
-		return p.apply(styleInfo, text)
+	case result.Outage, result.Disruption, result.Risk, result.NotAssessed:
+		return p.apply(severityStyle(s).Bold(true), text)
 	default:
-		return text
+		return p.bold(text)
 	}
 }
 

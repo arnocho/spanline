@@ -4,6 +4,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/arnocho/spanline/internal/brief"
 	"github.com/arnocho/spanline/internal/result"
 )
 
@@ -60,8 +61,10 @@ func knownSeverity(s result.Severity) bool {
 	return false
 }
 
-// EstateText renders the cockpit for a terminal: clusters, then pools with the Terraform
-// address that owns them, then risks grouped by severity.
+// EstateText renders the cockpit for a terminal. By default it prints the short screen:
+// where to look first, then one line per cluster in words. With Options.Details it is
+// followed by the tables, clusters, pools with the Terraform address that owns them, and
+// risks grouped by severity.
 func EstateText(r *result.EstateReport, o Options) string {
 	p := newPalette(o)
 	var b strings.Builder
@@ -71,15 +74,22 @@ func EstateText(r *result.EstateReport, o Options) string {
 		return out(&b)
 	}
 
-	header(&b, p, o, "spanline estate", []string{
-		kv("clusters", itoa(len(r.Clusters))),
-		kv("pools", itoa(len(r.Pools))),
-		kv("risks", itoa(len(r.Risks))),
-		kv("source", "terraform state and kubernetes"),
-	}, []string{
-		kv("generated", ts(r.GeneratedAt)),
-		kv("state files", itoa(len(r.States))),
-	})
+	br := brief.Estate(r)
+	briefHead(&b, p, o, "spanline estate"+gutter+br.Sub, br)
+	briefKeys(&b, p, o, br.Key)
+	clusterLines(&b, p, o, r.Clusters)
+	heldBack(&b, p, o, br.More)
+	if !o.Details {
+		return out(&b)
+	}
+
+	section(&b, p, "details")
+	writeFields(&b, [][2]string{
+		{"generated", ts(r.GeneratedAt)},
+		{"risks", itoa(len(r.Risks))},
+		{"state files", itoa(len(r.States))},
+		{"source", "terraform state and kubernetes"},
+	}, indent1)
 
 	section(&b, p, "clusters")
 	if len(r.Clusters) == 0 {
@@ -173,7 +183,8 @@ func EstateMarkdown(r *result.EstateReport) string {
 		return out(&b)
 	}
 
-	b.WriteString("# spanline estate\n\n")
+	b.WriteString("# spanline estate\n")
+	mdBrief(&b, brief.Estate(r))
 	b.WriteString("Generated " + ts(r.GeneratedAt) + ". Clusters: " + itoa(len(r.Clusters)) +
 		". Pools: " + itoa(len(r.Pools)) + ". Risks: " + itoa(len(r.Risks)) + ".\n")
 
