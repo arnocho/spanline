@@ -1,6 +1,6 @@
 module github.com/arnocho/spanline
 
-go 1.27.1
+go 1.27
 
 require (
 	github.com/charmbracelet/bubbles v1.0.0
