@@ -6,7 +6,6 @@
   <a href="https://github.com/arnocho/spanline/actions/workflows/ci.yml"><img src="https://github.com/arnocho/spanline/actions/workflows/ci.yml/badge.svg" alt="ci"></a>
   <a href="go.mod"><img src="https://img.shields.io/github/go-mod/go-version/arnocho/spanline?logo=go&logoColor=white" alt="go version"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/licence-Apache--2.0-3b82f6" alt="licence Apache-2.0"></a>
-  <a href="https://goreportcard.com/report/github.com/arnocho/spanline"><img src="https://goreportcard.com/badge/github.com/arnocho/spanline" alt="go report card"></a>
   <a href="https://pkg.go.dev/github.com/arnocho/spanline"><img src="https://pkg.go.dev/badge/github.com/arnocho/spanline.svg" alt="go reference"></a>
   <a href="docs/security-review.md"><img src="https://img.shields.io/badge/cluster%20access-read%20only-14b8a6" alt="read only"></a>
   <a href="docs/security-review.md"><img src="https://img.shields.io/badge/secrets-never%20read-14b8a6" alt="secrets never read"></a>

@@ -116,12 +116,13 @@ type app struct {
 	w, h   int
 
 	// loading
-	loader  Loader
-	events  chan tea.Msg
-	loading bool
-	loaded  bool
-	steps   []Step
-	loadErr error
+	loader   Loader
+	events   chan tea.Msg
+	loading  bool
+	loaded   bool
+	loadedAt time.Duration // on the interface clock, when the data arrived
+	steps    []Step
+	loadErr  error
 
 	// in flight analysis started from a row
 	busy      string
@@ -385,17 +386,26 @@ func (m *app) say(s string) {
 	m.toast, m.toastAt = s, m.now()
 }
 
-// loadingDone reports when the reading screen may leave: the data is here, and every step has
-// been on screen long enough to be read.
+// loadedHold keeps the finished reading list on screen long enough to read its last line, the
+// one that says secrets are never read, before the views arrive.
+const loadedHold = 700 * time.Millisecond
+
+// loadingDone reports when the reading screen may leave: the data is here, every step has been
+// on screen long enough to be read, and the finished list has been held for a beat.
 func (m app) loadingDone(since time.Duration) bool {
 	if !m.loaded {
 		return false
 	}
-	if len(m.steps) == 0 {
-		return since >= 2*stepEvery
+	end := m.loadedAt + loadedHold
+	if len(m.steps) > 0 {
+		if e := m.steps[len(m.steps)-1].At + stepEvery + loadedHold; e > end {
+			end = e
+		}
 	}
-	last := m.steps[len(m.steps)-1].At
-	return since >= last+stepEvery+stepEvery/2 && since >= time.Duration(len(m.steps)+1)*stepEvery
+	if e := time.Duration(len(m.steps)+1) * stepEvery; e > end {
+		end = e
+	}
+	return since >= end
 }
 
 // runAction starts the analysis the selected row offers, and reports it when it lands.
@@ -501,6 +511,7 @@ func (m app) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.steps[i].Done = true
 		}
 		m.loaded = true
+		m.loadedAt = m.since(m.started)
 		if !m.enabled(m.view) && m.anyEnabled() {
 			m.view = m.firstEnabled()
 		}
