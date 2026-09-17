@@ -160,13 +160,15 @@ func overviewRows(t Theme, r *result.EstateReport, expanded bool, actions bool) 
 		rows = append(rows, row{
 			render: func(th Theme, sel bool) string {
 				caret := th.caret(sel)
-				namePlain := pad(cut(p.Context+" "+p.Pool, 26), 26)
-				nodesPlain := pad(fmt.Sprintf("%2d %s", p.Nodes, plural(p.Nodes, "node", "nodes")), 9)
-				meterW := 8
-				if th.Narrow() {
-					meterW = 5
-				}
+				nameW, meterW := 26, 8
 				cpuPlain := fmt.Sprintf(" %3.0f%% cpu", p.CPUPercent)
+				if th.Inner() < 76 {
+					// a narrower column, as in the dashboard: shorter name, shorter meter, bare percent
+					nameW, meterW = 22, 5
+					cpuPlain = fmt.Sprintf(" %3.0f%%", p.CPUPercent)
+				}
+				namePlain := pad(cut(p.Context+" "+p.Pool, nameW), nameW)
+				nodesPlain := pad(fmt.Sprintf("%2d %s", p.Nodes, plural(p.Nodes, "node", "nodes")), 9)
 				used := 2 + len([]rune(namePlain)) + len([]rune(nodesPlain)) + meterW + len([]rune(cpuPlain)) + 2
 				ownerPlain := cut(shortAddr(owner), th.Inner()-used)
 				name := th.paint(colText, namePlain)
@@ -239,7 +241,7 @@ func orNone(s string) string {
 }
 
 // incidentRows answers: what separates the failing pods, and which change made it.
-func incidentRows(t Theme, r *result.WhyReport, expanded bool) []row {
+func incidentRows(t Theme, r *result.WhyReport, expanded bool, wide bool) []row {
 	if r == nil {
 		return nil
 	}
@@ -247,14 +249,21 @@ func incidentRows(t Theme, r *result.WhyReport, expanded bool) []row {
 	b := brief.Why(r)
 	for _, k := range b.Key {
 		k := k
+		// in the dashboard the tiles and the context panel carry the onset, the separation and
+		// the diff, so the list keeps only the change itself
+		if wide && k.Label != "the change" && k.Label != "closest change" {
+			continue
+		}
 		rows = append(rows, row{render: func(th Theme, _ bool) string {
 			return th.KeyLine(k.Label, k.Value, k.Note, k.Sev)
 		}})
 	}
 	rows = append(rows, spacer())
-	if tl := timelineRows(t, r); len(tl) > 0 {
-		rows = append(rows, tl...)
-		rows = append(rows, spacer())
+	if !wide {
+		if tl := timelineRows(t, r); len(tl) > 0 {
+			rows = append(rows, tl...)
+			rows = append(rows, spacer())
+		}
 	}
 
 	// Only the dimensions that actually differ earn a line. The rest is one dim sentence.
@@ -389,7 +398,7 @@ func incidentRows(t Theme, r *result.WhyReport, expanded bool) []row {
 }
 
 // impactRows answers: what breaks if this happens.
-func impactRows(t Theme, r *result.ImpactReport, expanded bool) []row {
+func impactRows(t Theme, r *result.ImpactReport, expanded bool, wide bool) []row {
 	if r == nil {
 		return nil
 	}
@@ -399,12 +408,15 @@ func impactRows(t Theme, r *result.ImpactReport, expanded bool) []row {
 		if k.Sev != "" {
 			continue // severity lines are shown as cards below, not twice
 		}
+		if wide && k.Label == "nodes affected" {
+			continue // the context panel lists them
+		}
 		k := k
 		rows = append(rows, row{render: func(th Theme, _ bool) string {
 			return th.KeyLine(k.Label, k.Value, k.Note, k.Sev)
 		}})
 	}
-	if len(r.Mapping) > 0 {
+	if len(r.Mapping) > 0 && !wide {
 		rows = append(rows, spacer(), sectionRow(t, "what the plan moves"))
 		for _, mline := range r.Mapping {
 			if i := strings.Index(mline, " [state"); i >= 0 {

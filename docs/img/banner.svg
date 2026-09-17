@@ -1,33 +1,66 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="320" viewBox="0 0 1200 320" role="img" aria-label="spanline: one read-only binary spanning Terraform and Kubernetes">
-  <rect width="1200" height="320" rx="16" fill="#1e1e2e"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="400" viewBox="0 0 1200 400" role="img" aria-label="spanline: one read-only binary spanning Terraform and Kubernetes">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#181826"/>
+      <stop offset="1" stop-color="#232338"/>
+    </linearGradient>
+    <linearGradient id="span" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#a78bfa"/>
+      <stop offset="0.5" stop-color="#5eead4"/>
+      <stop offset="1" stop-color="#60a5fa"/>
+    </linearGradient>
+    <filter id="glow" x="-20%" y="-200%" width="140%" height="500%">
+      <feGaussianBlur stdDeviation="5" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <pattern id="dots" width="28" height="28" patternUnits="userSpaceOnUse">
+      <circle cx="1.5" cy="1.5" r="1.5" fill="#ffffff" fill-opacity="0.045"/>
+    </pattern>
+  </defs>
+
+  <rect width="1200" height="400" rx="26" fill="url(#bg)"/>
+  <rect width="1200" height="400" rx="26" fill="url(#dots)"/>
+  <rect x="0.5" y="0.5" width="1199" height="399" rx="26" fill="none" stroke="#ffffff" stroke-opacity="0.06"/>
+
+  <g font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif">
+    <text x="72" y="132" font-size="78" font-weight="800" fill="#5eead4" letter-spacing="-2.5">spanline</text>
+    <text x="76" y="182" font-size="25" fill="#e2e4f0">one read-only binary that spans your Terraform</text>
+    <text x="76" y="214" font-size="25" fill="#e2e4f0">and your Kubernetes clusters, from your laptop</text>
+    <text x="76" y="254" font-size="15.5" fill="#8b8fa8" font-family="Menlo, SFMono-Regular, Consolas, 'Liberation Mono', monospace">no agent in the cluster  ·  no SaaS  ·  no Secret ever read  ·  runs with no cluster at all</text>
+  </g>
+
+  <g transform="translate(740, 92)">
+    <rect x="0" y="22" width="168" height="66" rx="14" fill="#1f1f33" stroke="#a78bfa" stroke-opacity="0.55" stroke-width="1.5"/>
+    <text x="84" y="50" text-anchor="middle" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="17" font-weight="700" fill="#c4b5fd">terraform</text>
+    <text x="84" y="72" text-anchor="middle" font-family="Menlo, SFMono-Regular, Consolas, monospace" font-size="12" fill="#8b8fa8">state and plan</text>
+
+    <rect x="252" y="22" width="168" height="66" rx="14" fill="#1f1f33" stroke="#60a5fa" stroke-opacity="0.55" stroke-width="1.5"/>
+    <text x="336" y="50" text-anchor="middle" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="17" font-weight="700" fill="#93c5fd">kubernetes</text>
+    <text x="336" y="72" text-anchor="middle" font-family="Menlo, SFMono-Regular, Consolas, monospace" font-size="12" fill="#8b8fa8">nodes, pods, budgets</text>
+
+    <line x1="168" y1="55" x2="252" y2="55" stroke="url(#span)" stroke-width="4" stroke-linecap="round" filter="url(#glow)"/>
+    <circle cx="210" cy="55" r="7" fill="#181826" stroke="#5eead4" stroke-width="3"/>
+    <text x="210" y="122" text-anchor="middle" font-family="Menlo, SFMono-Regular, Consolas, monospace" font-size="12.5" fill="#5eead4" letter-spacing="2">READ ONLY</text>
+  </g>
+
   <g font-family="Menlo, SFMono-Regular, Consolas, 'Liberation Mono', monospace">
-    <text x="64" y="112" font-size="64" font-weight="700" fill="#5EEAD4">spanline</text>
-    <text x="64" y="158" font-size="22" fill="#cdd6f4">one read-only binary that spans your Terraform and your Kubernetes clusters, from your laptop</text>
-    <text x="64" y="196" font-size="18" fill="#7f849c">no agent in the cluster  ·  no SaaS  ·  no Secret ever read  ·  works with no cluster at all</text>
-
-    <g transform="translate(64,232)">
-      <rect width="330" height="56" rx="8" fill="#282a3a" stroke="#45475a"/>
-      <text x="18" y="24" font-size="15" fill="#5EEAD4">overview</text>
-      <text x="18" y="44" font-size="13" fill="#a6adc8">where to look first, who owns each pool</text>
+    <g transform="translate(72, 296)">
+      <rect width="336" height="66" rx="14" fill="#1f1f33" stroke="#ffffff" stroke-opacity="0.08"/>
+      <rect x="0" y="0" width="4" height="66" rx="2" fill="#5eead4"/>
+      <text x="22" y="28" font-size="16" font-weight="700" fill="#5eead4">overview</text>
+      <text x="22" y="50" font-size="13" fill="#a6adc8">where to look first, who owns each pool</text>
     </g>
-    <g transform="translate(412,232)">
-      <rect width="330" height="56" rx="8" fill="#282a3a" stroke="#45475a"/>
-      <text x="18" y="24" font-size="15" fill="#FB923C">incident</text>
-      <text x="18" y="44" font-size="13" fill="#a6adc8">what separates the failing pods, which change did it</text>
+    <g transform="translate(432, 296)">
+      <rect width="336" height="66" rx="14" fill="#1f1f33" stroke="#ffffff" stroke-opacity="0.08"/>
+      <rect x="0" y="0" width="4" height="66" rx="2" fill="#fb923c"/>
+      <text x="22" y="28" font-size="16" font-weight="700" fill="#fb923c">incident</text>
+      <text x="22" y="50" font-size="13" fill="#a6adc8">what separates the failing pods</text>
     </g>
-    <g transform="translate(760,232)">
-      <rect width="376" height="56" rx="8" fill="#282a3a" stroke="#45475a"/>
-      <text x="18" y="24" font-size="15" fill="#F87171">impact</text>
-      <text x="18" y="44" font-size="13" fill="#a6adc8">what breaks if these nodes go away, or this plan runs</text>
-    </g>
-
-    <g transform="translate(1036,60)" fill="#45475a">
-      <rect x="0" y="0" width="100" height="6" rx="3" fill="#5EEAD4"/>
-      <rect x="0" y="16" width="72" height="6" rx="3"/>
-      <rect x="0" y="32" width="88" height="6" rx="3"/>
-      <rect x="0" y="48" width="56" height="6" rx="3" fill="#F87171"/>
-      <rect x="0" y="64" width="80" height="6" rx="3"/>
-      <rect x="0" y="80" width="64" height="6" rx="3" fill="#FCD34D"/>
+    <g transform="translate(792, 296)">
+      <rect width="336" height="66" rx="14" fill="#1f1f33" stroke="#ffffff" stroke-opacity="0.08"/>
+      <rect x="0" y="0" width="4" height="66" rx="2" fill="#f87171"/>
+      <text x="22" y="28" font-size="16" font-weight="700" fill="#f87171">impact</text>
+      <text x="22" y="50" font-size="13" fill="#a6adc8">what breaks if this plan runs</text>
     </g>
   </g>
 </svg>

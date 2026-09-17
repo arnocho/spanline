@@ -65,6 +65,11 @@ what the tool touches and what it deliberately never touches:
 
 ## The three screens
 
+On a terminal at least 104 columns wide, each screen is a dashboard: a row of tiles that count up
+as the view arrives, the list you navigate on the left, and a context panel on the right. Narrower
+terminals get the same content in one column. On a live cluster the cockpit reloads itself every
+30 seconds, with a countdown in the header, and says in one line what changed.
+
 ### overview: where should I look first
 
 The prioritised findings, then one line per cluster, then one line per node pool with the
@@ -128,7 +133,8 @@ spanline cockpit --contexts 'prod-*' --tfstate ./infra/state.json
 
 Contexts are globs over your kubeconfig. Each `--tfstate` is a state file you already have; only
 identity is read from it, never attribute values, so a state holding secrets is not disclosed. With
-no state, node pools show "no terraform owner found" instead of a guess.
+no state, node pools show "no terraform owner found" instead of a guess. The cockpit reloads every
+30 seconds; `r` reloads now, and `--refresh 0` turns it off.
 
 **3. Explain an incident.**
 
@@ -199,6 +205,7 @@ the time. Outside it, `--json` prints the report for anything downstream.
 | d | expand: every row and every detail, inline |
 | / | filter the list, enter keeps it, esc clears it |
 | e | export this view as markdown |
+| r | on a live cockpit: reload now |
 | ? | the key map, and what each view answers |
 | q | quit |
 

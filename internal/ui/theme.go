@@ -49,8 +49,8 @@ func (t Theme) Narrow() bool { return t.Width < 76 }
 // Inner is the writable width inside the two column gutter.
 func (t Theme) Inner() int {
 	w := t.Width - 4
-	if w > 100 {
-		w = 100
+	if w > 132 {
+		w = 132
 	}
 	if w < 30 {
 		w = 30

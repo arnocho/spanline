@@ -44,6 +44,9 @@ type Data struct {
 	Start      View
 	SnapshotAt time.Time
 	Actions    *Actions
+	// RefreshEvery makes a live cockpit reload itself on a timer, with a countdown in the
+	// header and r to reload now. Zero, and the default for recorded data, means never.
+	RefreshEvery time.Duration
 }
 
 // Loader produces the data while reporting what it is doing. Every progress call becomes one
@@ -127,6 +130,10 @@ type app struct {
 	// in flight analysis started from a row
 	busy      string
 	busySince time.Time
+
+	// live refresh
+	refreshing bool
+	lastLoad   time.Time
 
 	// transient message above the footer
 	toast   string
@@ -267,9 +274,9 @@ func (m app) firstEnabled() View {
 func (m app) rows() []row {
 	switch m.view {
 	case ViewIncident:
-		return incidentRows(m.t, m.data.Why, m.expanded)
+		return incidentRows(m.t, m.data.Why, m.expanded, m.wide() && !m.expanded)
 	case ViewImpact:
-		return impactRows(m.t, m.data.Impact, m.expanded)
+		return impactRows(m.t, m.data.Impact, m.expanded, m.wide() && !m.expanded)
 	default:
 		return overviewRows(m.t, m.data.Estate, m.expanded, m.data.Actions != nil)
 	}
@@ -439,6 +446,62 @@ func (m *app) runAction(kind string) tea.Cmd {
 	return nil
 }
 
+// refreshDue reports whether a live cockpit should reload itself now.
+func (m app) refreshDue() bool {
+	return m.data.Live && m.data.RefreshEvery > 0 && m.loader != nil &&
+		!m.loading && !m.refreshing && m.loadErr == nil && !m.lastLoad.IsZero() &&
+		m.since(m.lastLoad) >= m.data.RefreshEvery
+}
+
+// startRefresh runs the loader again while the views stay on screen.
+func (m *app) startRefresh() tea.Cmd {
+	m.refreshing = true
+	m.busy, m.busySince = "refreshing", m.now()
+	return tea.Batch(m.startLoad(), waitFor(m.events))
+}
+
+// applyRefresh swaps in reloaded data and says what changed, in one line.
+func (m *app) applyRefresh(d Data) {
+	before := countFindings(m.data.Estate)
+	if d.Estate != nil {
+		m.data.Estate = d.Estate
+	}
+	if d.Why != nil {
+		m.data.Why = d.Why
+	}
+	if d.Impact != nil {
+		m.data.Impact = d.Impact
+	}
+	if !d.SnapshotAt.IsZero() {
+		m.data.SnapshotAt = d.SnapshotAt
+	}
+	after := countFindings(m.data.Estate)
+	m.refreshing, m.busy = false, ""
+	m.lastLoad = m.now()
+	m.settle()
+	switch {
+	case after > before:
+		m.say(fmt.Sprintf("refreshed: %d findings, %d new", after, after-before))
+	case after < before:
+		m.say(fmt.Sprintf("refreshed: %d findings, %d fewer", after, before-after))
+	default:
+		m.say(fmt.Sprintf("refreshed: %d findings, no change", after))
+	}
+}
+
+func countFindings(r *result.EstateReport) int {
+	if r == nil {
+		return 0
+	}
+	n := 0
+	for _, f := range r.Risks {
+		if f.Severity != result.Info {
+			n++
+		}
+	}
+	return n
+}
+
 // export writes the current view as markdown next to the working directory, for a ticket.
 func (m *app) export() {
 	var text, name string
@@ -490,9 +553,16 @@ func (m app) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.toast != "" && m.since(m.toastAt) > 3500*time.Millisecond {
 			m.toast = ""
 		}
+		if m.refreshDue() {
+			return m, tea.Batch(tick(), m.startRefresh())
+		}
 		return m, tick()
 
 	case progressMsg:
+		if m.refreshing {
+			// a reload keeps the views on screen; its progress is not a new reading screen
+			return m, waitFor(m.events)
+		}
 		s := Step(msg)
 		s.At = m.since(m.started)
 		for i := range m.steps {
@@ -502,22 +572,37 @@ func (m app) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, waitFor(m.events)
 
 	case loadedMsg:
+		if m.refreshing {
+			m.applyRefresh(msg.data)
+			return m, nil
+		}
 		acts := m.data.Actions
+		refresh := m.data.RefreshEvery
 		m.data = msg.data
 		if m.data.Actions == nil {
 			m.data.Actions = acts
+		}
+		if m.data.RefreshEvery == 0 {
+			m.data.RefreshEvery = refresh
 		}
 		for i := range m.steps {
 			m.steps[i].Done = true
 		}
 		m.loaded = true
 		m.loadedAt = m.since(m.started)
+		m.lastLoad = m.now()
 		if !m.enabled(m.view) && m.anyEnabled() {
 			m.view = m.firstEnabled()
 		}
 		return m, nil
 
 	case failedMsg:
+		if m.refreshing {
+			m.refreshing, m.busy = false, ""
+			m.lastLoad = m.now()
+			m.say("refresh failed: " + msg.err.Error())
+			return m, nil
+		}
 		m.loadErr = msg.err
 		m.loaded, m.loading = true, false
 		return m, nil
@@ -652,6 +737,10 @@ func (m app) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.settle()
 		case "e":
 			m.export()
+		case "r":
+			if m.data.Live && m.loader != nil && !m.refreshing {
+				return m, m.startRefresh()
+			}
 		case "w":
 			if cmd := m.runAction("why"); cmd != nil {
 				return m, cmd
@@ -704,40 +793,110 @@ func (m app) frame(sinceStart, sinceView time.Duration) string {
 	b.WriteString(m.headline())
 	b.WriteString("\n\n")
 
+	// the stat tiles count up and fill in as the view arrives
+	used := 8 // header, tabs, headline, and their blank lines
+	if m.tall() && !m.expanded {
+		if tiles := m.t.Tiles(m.tiles(sinceView), m.t.Inner(), ease(sinceView, tileFill)); tiles != "" {
+			b.WriteString(indentBlock(tiles, "  "))
+			b.WriteString("\n")
+			used += 4
+		}
+	}
+
 	rows := m.filtered()
+	footerLines := 3
+	if m.view == ViewImpact {
+		footerLines++
+	}
+	bodyH := m.h - used - footerLines
+	if bodyH < 6 {
+		bodyH = 6
+	}
+	if m.expanded {
+		bodyH = 10000
+	}
+
+	listW := m.t.Inner()
+	sideW := 0
+	if m.wide() && !m.expanded {
+		listW = m.t.Inner() * 58 / 100
+		sideW = m.t.Inner() - listW - 2
+	}
+	list := m.renderList(rows, listW, bodyH, sinceView)
+	if sideW > 0 {
+		title, lines := m.sideLines(sideW - 4)
+		panel := m.t.Panel(title, lines, sideW, bodyH)
+		if sinceView < time.Duration(len(rows))*revealStep/2+panelFade {
+			panel = m.t.Faint(stripANSI(panel))
+		}
+		b.WriteString(lipgloss.JoinHorizontal(lipgloss.Top, blockOf(list, listW, bodyH), "  ", panel))
+	} else {
+		b.WriteString(strings.Join(list, "\n"))
+	}
+
+	b.WriteString("\n\n")
+	b.WriteString(m.statusLine(sinceStart))
+	b.WriteString(m.footer())
+	return b.String()
+}
+
+// renderList draws the interactive rows into a column of the given width, with the reveal
+// stagger and the selection pulse applied, and a hint when the column cannot hold everything.
+func (m app) renderList(rows []row, width, budget int, sinceView time.Duration) []string {
+	th := NewTheme(width+4, m.t.Color)
 	cursor := m.cursor[m.view]
 	pulse := pulsing(m.since(m.picked))
+	var lines []string
 	shown := 0
-	budget := m.bodyBudget()
 	for i, r := range rows {
-		if shown >= budget {
-			left := len(rows) - i
-			more := fmt.Sprintf("%d more below, press d to expand or / to filter", left)
-			if m.t.Narrow() {
-				more = fmt.Sprintf("%d more, press d", left)
-			}
-			b.WriteString("  " + m.t.Faint(cut(more, m.t.Inner())) + "\n")
-			break
-		}
 		state := reveal(i, sinceView)
 		if state == revealHidden {
 			break
 		}
-		th := m.t
 		sel := r.selectable && i == cursor
-		th.Pulse = sel && pulse
-		line := r.render(th, sel)
+		rt := th
+		rt.Pulse = sel && pulse
+		line := r.render(rt, sel)
 		if state == revealDim {
-			line = m.t.Faint(stripANSI(line))
+			line = th.Faint(stripANSI(line))
 		}
-		b.WriteString(line + "\n")
-		shown += strings.Count(line, "\n") + 1
+		n := strings.Count(line, "\n") + 1
+		last := i == len(rows)-1
+		// the hint that rows are hidden takes the last line itself, so it is never pushed off
+		if shown+n > budget || (!last && shown+n > budget-1) {
+			left := len(rows) - i
+			more := fmt.Sprintf("%d more below, press d to expand or / to filter", left)
+			if th.Narrow() {
+				more = fmt.Sprintf("%d more, press d", left)
+			}
+			lines = append(lines, "  "+th.Faint(cut(more, width)))
+			break
+		}
+		lines = append(lines, strings.Split(line, "\n")...)
+		shown += n
 	}
+	return lines
+}
 
-	b.WriteString("\n")
-	b.WriteString(m.statusLine(sinceStart))
-	b.WriteString(m.footer())
-	return b.String()
+// blockOf pads a column to an exact width and height so it sits cleanly next to a panel.
+func blockOf(lines []string, width, height int) string {
+	out := make([]string, 0, height)
+	for i := 0; i < height && i < len(lines); i++ {
+		out = append(out, fit(lines[i], width))
+	}
+	for len(out) < height {
+		out = append(out, strings.Repeat(" ", width))
+	}
+	return strings.Join(out, "\n")
+}
+
+// indentBlock prefixes every line of a block, so a multi line box lands inside the gutter.
+func indentBlock(s, prefix string) string {
+	parts := strings.Split(s, "\n")
+	for i := range parts {
+		parts[i] = prefix + parts[i]
+	}
+	return strings.Join(parts, "\n")
 }
 
 // statusLine is the one line above the footer: a filter being typed, work in flight, a toast,
@@ -756,17 +915,6 @@ func (m app) statusLine(sinceStart time.Duration) string {
 	return ""
 }
 
-func (m app) bodyBudget() int {
-	budget := m.h - 12
-	if m.expanded {
-		budget = 10000
-	}
-	if budget < 6 {
-		budget = 6
-	}
-	return budget
-}
-
 func (m app) header(sinceStart time.Duration) string {
 	name := m.t.Accent("spanline")
 	mode := m.t.Muted("recorded")
@@ -779,6 +927,18 @@ func (m app) header(sinceStart time.Duration) string {
 			age = m.t.Faint("  ·  snapshot " + humanAge(m.now().Sub(m.data.SnapshotAt)) + " ago")
 		} else {
 			age = m.t.Faint("  ·  " + m.data.SnapshotAt.Format("2006-01-02 15:04"))
+		}
+	}
+	if m.data.Live && m.data.RefreshEvery > 0 && m.loader != nil && !m.loading {
+		switch {
+		case m.refreshing:
+			age += m.t.Faint("  ·  ") + m.t.Accent(spinner(m.since(m.busySince))) + m.t.Faint(" refreshing")
+		case !m.lastLoad.IsZero():
+			left := m.data.RefreshEvery - m.since(m.lastLoad)
+			if left < 0 {
+				left = 0
+			}
+			age += m.t.Faint(fmt.Sprintf("  ·  refresh in %ds, r for now", int(left.Seconds()+0.5)))
 		}
 	}
 	left := "  " + name + "  " + mode + age
