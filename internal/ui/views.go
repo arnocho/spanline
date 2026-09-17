@@ -2,6 +2,7 @@ package ui
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 	"time"
 
@@ -409,6 +410,10 @@ func impactRows(t Theme, r *result.ImpactReport, expanded bool) []row {
 			if i := strings.Index(mline, " [state"); i >= 0 {
 				mline = mline[:i]
 			}
+			// the full label key belongs in the evidence; on screen, "pool apps" reads faster
+			for _, key := range []string{"kubernetes.azure.com/agentpool=", "cloud.google.com/gke-nodepool=", "eks.amazonaws.com/nodegroup=", "agentpool="} {
+				mline = strings.ReplaceAll(mline, "nodes "+key, "pool ")
+			}
 			mline := mline
 			rows = append(rows, staticRow("  "+t.Muted(wrapIndent(mline, t.Inner()-2, "    "))))
 		}
@@ -550,10 +555,17 @@ func timelineRows(t Theme, r *result.WhyReport) []row {
 		cells[pos] = t.paint(sevColor(m.sev), m.glyph)
 	}
 	line := "  " + t.Muted(pad("timeline", 12)) + strings.Join(cells, "")
-	// the legend names the marks in time order, clipped to the width
+	// the legend names each distinct moment once, in time order, clipped to the width
+	sort.SliceStable(marks, func(i, j int) bool { return marks[i].at.Before(marks[j].at) })
 	var legend []string
+	seen := map[string]bool{}
 	for _, m := range marks {
-		legend = append(legend, m.glyph+" "+m.label)
+		entry := m.glyph + " " + m.label
+		if seen[entry] {
+			continue
+		}
+		seen[entry] = true
+		legend = append(legend, entry)
 	}
 	leg := "  " + strings.Repeat(" ", 12) + t.Faint(cut(strings.Join(legend, "   "), width))
 	return []row{staticRow(line), staticRow(leg)}

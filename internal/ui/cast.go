@@ -155,6 +155,23 @@ func DemoScript() []Key {
 	}
 }
 
+// StillsScript holds each screen long enough to cut a clean still out of the recording: the
+// overview, the incident with the separating dimension, the impact, the key map, the evidence
+// panel. The README screenshots come from it, so they always match the code.
+func StillsScript() []Key {
+	return []Key{
+		{"", 3000 * time.Millisecond},
+		{"2", 3000 * time.Millisecond},
+		{"3", 3000 * time.Millisecond},
+		{"?", 3000 * time.Millisecond},
+		{"esc", 300 * time.Millisecond},
+		{"1", 1500 * time.Millisecond},
+		{"right", 3000 * time.Millisecond},
+		{"esc", 300 * time.Millisecond},
+		{"q", 300 * time.Millisecond},
+	}
+}
+
 // Asciicast serialises frames as an asciicast v2 stream: one header line, then one event per
 // repaint. Each event clears the screen and paints the whole frame, so any player shows it.
 func Asciicast(frames []CastFrame, w, h int, title string) string {
