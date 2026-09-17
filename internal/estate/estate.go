@@ -25,6 +25,7 @@ type Options struct {
 const (
 	zoneLabel        = "topology.kubernetes.io/zone"
 	legacyZoneLabel  = "failure-domain.beta.kubernetes.io/zone"
+	hostnameLabel    = "kubernetes.io/hostname"
 	rolePrefix       = "node-role.kubernetes.io/"
 	helmNameAnn      = "meta.helm.sh/release-name"
 	helmNamespaceAnn = "meta.helm.sh/release-namespace"
@@ -70,6 +71,9 @@ type pool struct {
 	memAlloc  int64
 	workloads map[workloadKey]bool
 	owner     *tfplan.Owner
+	// rivals are the state resources that declare this pool's name when none could be tied
+	// to this cluster, kept so the report can list them instead of picking one.
+	rivals []*ownerCandidate
 }
 
 // index is the per snapshot lookup table every rule shares, so the pod to workload,
@@ -85,10 +89,29 @@ type index struct {
 
 // ownerCandidate is one node pool declared by one state, and whether a live pool claimed it.
 type ownerCandidate struct {
-	owner    tfplan.Owner
-	stateIdx int
-	clusters map[string]bool
-	matched  bool
+	owner     tfplan.Owner
+	stateIdx  int
+	clusters  map[string]bool
+	matched   bool
+	claimedBy poolKey
+}
+
+// namesOtherLiveCluster reports a candidate whose state names a cluster that was read under
+// another context: that state describes that other cluster, so it is no candidate for this one.
+func (c *ownerCandidate) namesOtherLiveCluster(context string, live map[string]bool) bool {
+	for name := range c.clusters {
+		if name != context && live[name] {
+			return true
+		}
+	}
+	return false
+}
+
+// coverage counts what the pool totals could not include, per context, so the gaps say so.
+type coverage struct {
+	orphanPods       map[string]int // live pods on a node that was not read
+	unreadableNodes  map[string]int // nodes whose allocatable cpu or memory could not be read
+	unreadableValues map[string]int // container request values that could not be read
 }
 
 // Build turns snapshots and Terraform states into the estate report. It never mutates its
@@ -117,7 +140,7 @@ func Build(snaps []*model.Snapshot, states []*tfplan.State, o Options) (*result.
 		indexes = append(indexes, newIndex(s))
 	}
 
-	pools, orphanPods := buildPools(indexes)
+	pools, cov := buildPools(indexes)
 	candidates := ownPools(pools, read)
 
 	risks, atRisk := collectRisks(indexes, pools, read)
@@ -128,9 +151,20 @@ func Build(snaps []*model.Snapshot, states []*tfplan.State, o Options) (*result.
 		Pools:       poolSummaries(pools, atRisk),
 		Risks:       risks,
 		States:      stateSummaries(read, candidates),
-		Gaps:        gapLines(indexes, read, orphanPods),
+		Gaps:        gapLines(indexes, read, cov),
 		GeneratedAt: o.Now,
 	}, nil
+}
+
+// podLive reports a pod that still holds its requests and still needs protecting. A pod in
+// phase Succeeded or Failed keeps its spec but holds nothing, which is also how the
+// scheduler and kubectl describe count it.
+func podLive(p model.Pod) bool {
+	switch p.Status.Phase {
+	case "Succeeded", "Failed":
+		return false
+	}
+	return true
 }
 
 func newIndex(s *model.Snapshot) *index {
@@ -161,6 +195,9 @@ func newIndex(s *model.Snapshot) *index {
 				ix.podWorkload[nsName(pod.Metadata.Namespace, pod.Metadata.Name)] = keyOf(s.Context, w)
 				break
 			}
+		}
+		if !podLive(pod) {
+			continue
 		}
 		for _, v := range pod.Spec.Volumes {
 			if v.PersistentVolumeClaim == nil {
@@ -210,6 +247,17 @@ func (ix *index) workloadsSelectedBy(namespace string, sel *model.LabelSelector)
 	return out
 }
 
+// livePodsSelectedBy counts the live pods of a namespace a selector covers right now.
+func (ix *index) livePodsSelectedBy(namespace string, sel *model.LabelSelector) int {
+	n := 0
+	for _, pod := range ix.snap.Pods {
+		if pod.Metadata.Namespace == namespace && podLive(pod) && model.SelectorMatches(sel, pod.Metadata.Labels) {
+			n++
+		}
+	}
+	return n
+}
+
 // poolOf names the pool a node belongs to, and returns the exact label it read.
 func poolOf(n model.Node) (string, string) {
 	for _, key := range poolLabels {
@@ -240,60 +288,78 @@ func zoneOf(n model.Node) string {
 	return n.Metadata.Labels[legacyZoneLabel]
 }
 
-func allocatable(n model.Node) (int64, int64) {
-	var cpu, mem int64
-	if v, ok := model.ParseCPU(n.Status.Allocatable["cpu"]); ok {
-		cpu = v
-	}
-	if v, ok := model.ParseMemory(n.Status.Allocatable["memory"]); ok {
-		mem = v
-	}
-	return cpu, mem
+// allocatable reads a node's allocatable cpu and memory, and says whether both were readable.
+// What could be read is still returned, so a half readable node is not dropped entirely.
+func allocatable(n model.Node) (int64, int64, bool) {
+	cpu, okCPU := model.ParseCPU(n.Status.Allocatable["cpu"])
+	mem, okMem := model.ParseMemory(n.Status.Allocatable["memory"])
+	return cpu, mem, okCPU && okMem
 }
 
-func requests(p model.Pod) (int64, int64) {
+// requests sums a pod's container requests and counts the values present but unreadable.
+// A request that is simply absent is a BestEffort container, which holds nothing: not a gap.
+func requests(p model.Pod) (int64, int64, int) {
 	var cpu, mem int64
+	unreadable := 0
 	for _, c := range p.Spec.Containers {
-		if v, ok := model.ParseCPU(c.Resources.Requests["cpu"]); ok {
-			cpu += v
+		if raw, present := c.Resources.Requests["cpu"]; present {
+			if v, ok := model.ParseCPU(raw); ok {
+				cpu += v
+			} else {
+				unreadable++
+			}
 		}
-		if v, ok := model.ParseMemory(c.Resources.Requests["memory"]); ok {
-			mem += v
+		if raw, present := c.Resources.Requests["memory"]; present {
+			if v, ok := model.ParseMemory(raw); ok {
+				mem += v
+			} else {
+				unreadable++
+			}
 		}
 	}
-	return cpu, mem
+	return cpu, mem, unreadable
 }
 
-// buildPools groups nodes into pools, then folds the pods scheduled on those nodes into each
-// pool's request totals and workload set. Pods whose node was not read are counted and
-// returned, so the report admits the undercount instead of hiding it.
-func buildPools(indexes []*index) (map[poolKey]*pool, map[string]int) {
+// buildPools groups nodes into pools, then folds the live pods scheduled on those nodes into
+// each pool's request totals and workload set. A pod that has finished holds nothing and is
+// left out. Pods whose node was not read, and quantities that could not be read, are counted
+// and returned, so the report admits the undercount instead of hiding it.
+func buildPools(indexes []*index) (map[poolKey]*pool, coverage) {
 	pools := map[poolKey]*pool{}
-	orphans := map[string]int{}
+	cov := coverage{
+		orphanPods:       map[string]int{},
+		unreadableNodes:  map[string]int{},
+		unreadableValues: map[string]int{},
+	}
 	for _, ix := range indexes {
+		ctx := ix.snap.Context
 		for _, n := range ix.snap.Nodes {
 			name, label := poolOf(n)
-			p := poolFor(pools, poolKey{context: ix.snap.Context, name: name}, label)
+			p := poolFor(pools, poolKey{context: ctx, name: name}, label)
 			p.nodes = append(p.nodes, n.Metadata.Name)
 			if z := zoneOf(n); z != "" {
 				p.zones[z] = true
 			}
-			cpu, mem := allocatable(n)
+			cpu, mem, ok := allocatable(n)
+			if !ok {
+				cov.unreadableNodes[ctx]++
+			}
 			p.cpuAlloc += cpu
 			p.memAlloc += mem
 		}
 		for _, pod := range ix.snap.Pods {
-			if pod.Spec.NodeName == "" {
+			if pod.Spec.NodeName == "" || !podLive(pod) {
 				continue
 			}
 			n, ok := ix.nodeByName[pod.Spec.NodeName]
 			if !ok {
-				orphans[ix.snap.Context]++
+				cov.orphanPods[ctx]++
 				continue
 			}
 			name, label := poolOf(n)
-			p := poolFor(pools, poolKey{context: ix.snap.Context, name: name}, label)
-			cpu, mem := requests(pod)
+			p := poolFor(pools, poolKey{context: ctx, name: name}, label)
+			cpu, mem, unreadable := requests(pod)
+			cov.unreadableValues[ctx] += unreadable
 			p.cpuReq += cpu
 			p.memReq += mem
 			if k, ok := ix.podWorkload[nsName(pod.Metadata.Namespace, pod.Metadata.Name)]; ok {
@@ -301,7 +367,7 @@ func buildPools(indexes []*index) (map[poolKey]*pool, map[string]int) {
 			}
 		}
 	}
-	return pools, orphans
+	return pools, cov
 }
 
 func poolFor(pools map[poolKey]*pool, k poolKey, label string) *pool {
@@ -318,9 +384,13 @@ func poolFor(pools map[poolKey]*pool, k poolKey, label string) *pool {
 	return p
 }
 
-// ownPools matches each live pool to the Terraform address that declares it, by pool name.
-// When several states declare the same name, the one whose state also declares a cluster
-// named like the kube context wins, so two clouds sharing a pool name do not swap owners.
+// ownPools matches each live pool to the Terraform resource that declares it. One resource
+// owns one pool. First, a pool whose context is a cluster its state names takes that
+// resource. Then a pool nothing names by cluster takes the resource of that name when it is
+// the only one left that could describe it: unclaimed, wanted by no other pool, and in a
+// state that names no other cluster read. Anything else stays unowned with its candidates
+// recorded, so the report says why instead of handing a resource to a pool its state may
+// not describe.
 func ownPools(pools map[poolKey]*pool, states []*tfplan.State) []*ownerCandidate {
 	var candidates []*ownerCandidate
 	for i, st := range states {
@@ -335,31 +405,54 @@ func ownPools(pools map[poolKey]*pool, states []*tfplan.State) []*ownerCandidate
 	if len(candidates) == 0 {
 		return candidates
 	}
-	for _, k := range sortedPoolKeys(pools) {
+	live := map[string]bool{}
+	for k := range pools {
+		live[k.context] = true
+	}
+	keys := sortedPoolKeys(pools)
+	claim := func(p *pool, c *ownerCandidate) {
+		c.matched = true
+		c.claimedBy = p.key
+		owner := c.owner
+		p.owner = &owner
+		p.rivals = nil
+	}
+	for _, k := range keys {
 		p := pools[k]
-		var fallback *ownerCandidate
-		var chosen *ownerCandidate
+		for _, c := range candidates {
+			if !c.matched && c.owner.Name == p.key.name && c.clusters[p.key.context] {
+				claim(p, c)
+				break
+			}
+		}
+	}
+	eligible := map[poolKey][]*ownerCandidate{}
+	wanted := map[*ownerCandidate]int{}
+	for _, k := range keys {
+		p := pools[k]
+		if p.owner != nil {
+			continue
+		}
 		for _, c := range candidates {
 			if c.owner.Name != p.key.name {
 				continue
 			}
-			if c.clusters[p.key.context] {
-				chosen = c
-				break
+			p.rivals = append(p.rivals, c)
+			if c.matched || c.namesOtherLiveCluster(p.key.context, live) {
+				continue
 			}
-			if fallback == nil {
-				fallback = c
-			}
+			eligible[k] = append(eligible[k], c)
+			wanted[c]++
 		}
-		if chosen == nil {
-			chosen = fallback
-		}
-		if chosen == nil {
+	}
+	for _, k := range keys {
+		p := pools[k]
+		if p.owner != nil {
 			continue
 		}
-		chosen.matched = true
-		owner := chosen.owner
-		p.owner = &owner
+		if e := eligible[k]; len(e) == 1 && wanted[e[0]] == 1 {
+			claim(p, e[0])
+		}
 	}
 	return candidates
 }
@@ -465,19 +558,30 @@ func stateSummaries(states []*tfplan.State, candidates []*ownerCandidate) []resu
 }
 
 // gapLines says out loud what was not read. An empty risk list only means something when
-// this list is empty too.
-func gapLines(indexes []*index, states []*tfplan.State, orphanPods map[string]int) []string {
+// this list is empty too. Each gap is said once.
+func gapLines(indexes []*index, states []*tfplan.State, cov coverage) []string {
 	var out []string
 	for _, ix := range indexes {
 		ctx := ix.snap.Context
+		seen := map[model.CoverageGap]bool{}
 		for _, g := range ix.snap.Gaps {
+			if seen[g] {
+				continue
+			}
+			seen[g] = true
 			out = append(out, fmt.Sprintf("%s: %s was not read (%s), so nothing about it was assessed", ctx, g.Resource, g.Reason))
 		}
 		if len(ix.snap.Nodes) == 0 {
 			out = append(out, fmt.Sprintf("%s: returned no nodes, so no pool, no capacity and no node risk was assessed there", ctx))
 		}
-		if n := orphanPods[ctx]; n > 0 {
+		if n := cov.orphanPods[ctx]; n > 0 {
 			out = append(out, fmt.Sprintf("%s: %d pod(s) run on a node that was not read, so their requests are missing from the pool totals", ctx, n))
+		}
+		if n := cov.unreadableNodes[ctx]; n > 0 {
+			out = append(out, fmt.Sprintf("%s: status.allocatable cpu or memory could not be read on %d node(s), so the pool capacity there is short and its percentages are not to be trusted", ctx, n))
+		}
+		if n := cov.unreadableValues[ctx]; n > 0 {
+			out = append(out, fmt.Sprintf("%s: %d container request value(s) could not be read, so the pool request totals there are understated", ctx, n))
 		}
 	}
 	if len(states) == 0 {
@@ -496,6 +600,14 @@ func keyOf(context string, w model.Workload) workloadKey {
 }
 
 func nsName(namespace, name string) string { return namespace + "/" + name }
+
+// plural picks the word that agrees with n.
+func plural(n int, one, many string) string {
+	if n == 1 {
+		return one
+	}
+	return many
+}
 
 func percent(used, total int64) float64 {
 	if total <= 0 {

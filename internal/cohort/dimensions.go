@@ -24,6 +24,7 @@ type dimResult struct {
 	node          bool
 	discriminator string
 	missingSide   string
+	failingValues map[string]int // every value seen on the failing side, by pod count
 }
 
 // node pool labels, in the order they are trusted.
@@ -135,7 +136,7 @@ func (a *analysis) computeDimensions() {
 		failing, missingFailing := tally(a.failing, d)
 		healthy, missingHealthy := tally(a.healthy, d)
 
-		row := dimResult{order: i, node: d.node}
+		row := dimResult{order: i, node: d.node, failingValues: failing}
 		row.Name = d.name
 		row.FailingValues = renderValues(failing, missingFailing)
 		row.HealthyValues = renderValues(healthy, missingHealthy)

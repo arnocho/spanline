@@ -43,7 +43,7 @@ are SPLITS, TEMPORAL, NO-SPLIT and UNKNOWN. The word "cause" is never printed.
 and see which workloads lose every replica, which budgets block the drain, which volumes are
 stranded and whether the load fits on what survives. Feed it a plan exported by your CI with
 `terraform show -json` and it maps pool replacements onto the same simulation. It exits 3 on an
-outage, 2 on a disruption, 1 when something could not be assessed, 0 when clean.
+outage, 2 on a disruption, 1 on a risk or when something could not be assessed, 0 when clean.
 
 ## Install
 
@@ -66,8 +66,11 @@ cluster, no network and no account.
 spanline cockpit --fixtures estate
 ```
 
+![the interface: overview, an incident opened from a workload, an impact opened from a pool](docs/demo.gif)
+
 The interface opens by naming every read it performs, which is also the shortest explanation of
-what the tool touches and what it deliberately never touches. Then one screen answers one question,
+what the tool touches and what it deliberately never touches. From the overview, `w` on a workload
+opens its incident and `i` on a node pool simulates losing it, without leaving the application. Then one screen answers one question,
 and the detail sits one keystroke away.
 
 | key | what it does |
@@ -109,9 +112,12 @@ Piping to a file, or passing `--json` or `--md`, prints the same answer without 
 
 ## What it reads, and what it never does
 
-Reads, through your own `kubectl`, with a subcommand allowlist of get, version, config, auth and
-api-resources: pods, nodes, replicasets, controllerrevisions, deployments, statefulsets, daemonsets,
-events, disruption budgets, volume claims, volumes, and Argo CD applications when present. Reads
+Reads, through your own `kubectl`, with an allowlist of exact read subcommands enforced in code:
+`get` (never Secrets, never `--raw`), `config view`, `config get-contexts`, `config
+current-context`, `auth can-i`, `auth whoami`, `version` and `api-resources`, with impersonation
+flags refused. What it gets: pods, nodes, replicasets, controllerrevisions, deployments,
+statefulsets, daemonsets, events, disruption budgets, volume claims, volumes, and Argo CD
+applications when present. Reads
 Terraform or OpenTofu JSON you already have: a state file, or a plan exported by your pipeline.
 
 Never writes, never patches, never evicts, never impersonates. Never reads Secrets, so Helm release

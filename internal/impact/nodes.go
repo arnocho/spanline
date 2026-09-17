@@ -73,10 +73,14 @@ func parseSelector(s string) (selection, error) {
 	}
 }
 
+// splitNames reads a comma separated list, dropping blanks and repeats, so a name written twice
+// is looked up once and reported once.
 func splitNames(s string) []string {
 	var out []string
+	seen := map[string]bool{}
 	for _, part := range strings.Split(s, ",") {
-		if p := strings.TrimSpace(part); p != "" {
+		if p := strings.TrimSpace(part); p != "" && !seen[p] {
+			seen[p] = true
 			out = append(out, p)
 		}
 	}

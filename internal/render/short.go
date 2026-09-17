@@ -105,7 +105,9 @@ func briefKeys(b *strings.Builder, p palette, o Options, lines []brief.Line) {
 		if strings.TrimSpace(l.Note) != "" {
 			budget = shared
 		}
-		values[i] = clip(l.Value, budget)
+		// An empty value prints as the same placeholder every table uses, never as a
+		// label followed by nothing.
+		values[i] = clip(orEmpty(l.Value), budget)
 		if strings.TrimSpace(l.Note) == "" {
 			continue
 		}
@@ -114,8 +116,10 @@ func briefKeys(b *strings.Builder, p palette, o Options, lines []brief.Line) {
 		}
 	}
 
-	// On a terminal too narrow to carry both, the note is what goes.
+	// On a terminal too narrow to carry both, the note moves under its value instead of
+	// being dropped: the screen grows by one line per note, and nothing goes unsaid.
 	room := full - valueWidth - len(gutter)
+	beside := room >= minNoteWidth
 
 	b.WriteString("\n")
 	for i, l := range lines {
@@ -126,7 +130,7 @@ func briefKeys(b *strings.Builder, p palette, o Options, lines []brief.Line) {
 			label = p.dim(label)
 		}
 		note := strings.TrimSpace(l.Note)
-		carries := note != "" && room >= minNoteWidth
+		carries := note != "" && beside
 		value := values[i]
 		if carries {
 			value = padRight(value, valueWidth)
@@ -136,24 +140,40 @@ func briefKeys(b *strings.Builder, p palette, o Options, lines []brief.Line) {
 			line += gutter + p.dim(clip(note, room))
 		}
 		b.WriteString(strings.TrimRight(line, " ") + "\n")
+		if note != "" && !beside {
+			b.WriteString(indent1 + strings.Repeat(" ", labelWidth) + gutter + p.dim(clip(note, full)) + "\n")
+		}
 	}
 }
 
 // heldBack closes the short screen by naming what it is not showing, and how to see it.
 // An empty list is stated as such: a blank line here would read as "that was everything".
+// When the list is too long for one line, the pointer to the rest takes a line of its own,
+// so it is never broken in the middle of the flag it names.
 func heldBack(b *strings.Builder, p palette, o Options, more string) {
 	text := strings.TrimSpace(more)
+	hint := ""
 	switch {
 	case text == "":
 		text = nothingHeldMsg
 	case o.Details:
-		text += ". " + detailsBelow
+		hint = detailsBelow
 	default:
-		text += ". " + detailsHint
+		hint = detailsHint
 	}
 	b.WriteString("\n")
+	if hint != "" {
+		if line := text + ". " + hint; lipgloss.Width(line) <= o.width() {
+			b.WriteString(p.dim(line) + "\n")
+			return
+		}
+		text += "."
+	}
 	for _, line := range wrap(text, o.width()) {
 		b.WriteString(p.dim(line) + "\n")
+	}
+	if hint != "" {
+		b.WriteString(p.dim(hint) + "\n")
 	}
 }
 

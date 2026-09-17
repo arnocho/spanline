@@ -3,8 +3,8 @@ package ui
 import "time"
 
 // Frame renders one deterministic still of the interface, at a given size and a given moment
-// of the animation. Snapshot tests use it, and so does anyone reviewing the design without a
-// terminal. Nothing in the drawing path reads the clock except through these two durations.
+// of the animation. Snapshot tests use it, and so does the recording. Nothing in the drawing
+// path reads the wall clock: the two durations are the only time it knows.
 func Frame(d Data, v View, w, h int, sinceStart, sinceView time.Duration, color bool) string {
 	m := newModel(d, w, h)
 	m.t = NewTheme(w, color)
@@ -13,9 +13,8 @@ func Frame(d Data, v View, w, h int, sinceStart, sinceView time.Duration, color 
 	if !m.enabled(v) && m.anyEnabled() {
 		m.view = m.firstEnabled()
 	}
-	_, running := stepState(len(m.steps), sinceStart)
-	m.collecting = running
-	m.coach = sinceStart < 6*time.Second
+	m.loading = !m.loadingDone(sinceStart)
+	m.coach = sinceStart < 8*time.Second
 	return m.frame(sinceStart, sinceView)
 }
 

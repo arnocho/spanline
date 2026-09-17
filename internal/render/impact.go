@@ -19,6 +19,7 @@ func ImpactText(r *result.ImpactReport, o Options) string {
 		b.WriteString(indent1 + "no report to render\n")
 		return out(&b)
 	}
+	r = scrub(r, true).(*result.ImpactReport)
 	w := o.width()
 
 	br := brief.Impact(r)
@@ -106,6 +107,7 @@ func ImpactMarkdown(r *result.ImpactReport) string {
 		b.WriteString("# spanline impact\n\nNo report to render.\n")
 		return out(&b)
 	}
+	r = scrub(r, true).(*result.ImpactReport)
 
 	b.WriteString("# spanline impact: " + orEmpty(r.Context) + "\n")
 	mdBrief(&b, brief.Impact(r))
@@ -158,7 +160,9 @@ func ImpactMarkdown(r *result.ImpactReport) string {
 				if len(f.Evidence) == 0 {
 					continue
 				}
-				b.WriteString(orEmpty(f.Object) + ":\n\n")
+				// Kind and object together: a budget and the deployment it covers share
+				// a name, and their evidence must not read as one list.
+				b.WriteString(strings.TrimSpace(f.Kind+" "+orEmpty(f.Object)) + ":\n\n")
 				mdList(&b, f.Evidence)
 				b.WriteString("\n")
 			}

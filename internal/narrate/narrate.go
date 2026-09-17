@@ -94,6 +94,11 @@ func allowField(raw string) (string, bool) {
 	if f == "" {
 		return "", false
 	}
+	// A path that names a credential is refused before any keyword below can match inside it:
+	// env.ZONE_API_KEY contains "zone", and its values must never leave.
+	if redact.IsSecretish(f) {
+		return "", false
+	}
 	has := func(subs ...string) bool {
 		for _, s := range subs {
 			if strings.Contains(f, s) {
@@ -314,11 +319,9 @@ func PayloadForWhy(r *result.WhyReport, p *redact.Pseudonymizer) Payload {
 	}
 
 	for i, s := range r.Suspects {
-		id := s.ID
-		if id == "" {
-			id = fmt.Sprintf("chg-%04d", i+1)
-		}
-		id = fieldSlug(id)
+		// The citation id is positional on purpose: a suspect's own id is built from the object
+		// it names (replicaset/<name>, argocd/<app>), and a name must never leave the machine.
+		id := fmt.Sprintf("chg-%04d", i+1)
 		pl.add(Fact{
 			ID:    id + ".verdict",
 			Field: "verdict",
@@ -791,7 +794,8 @@ func numberRuns(s string) []string {
 }
 
 // numberIn reports whether a number appears in a fact as a number, so 2 never matches inside
-// 256Mi while 512 still matches inside 512Mi.
+// 256Mi while 512 still matches inside 512Mi. The digits of a placeholder such as wl-2 or
+// ns-1 are part of a name, never a number a sentence may rest on.
 func numberIn(hay, tok string) bool {
 	if tok == "" {
 		return false
@@ -805,12 +809,43 @@ func numberIn(hay, tok string) bool {
 		end := start + len(tok)
 		leftOK := start == 0 || (!isDigit(hay[start-1]) && hay[start-1] != '.')
 		rightOK := end == len(hay) || (!isDigit(hay[end]) && hay[end] != '.')
-		if leftOK && rightOK {
+		if leftOK && rightOK && !placeholderShaped(tokenAround(hay, start, end)) {
 			return true
 		}
 		i = start + 1
 	}
 	return false
+}
+
+// tokenAround widens [start, end) to the whole identifier it sits in.
+func tokenAround(s string, start, end int) string {
+	for start > 0 && isIDChar(s[start-1]) {
+		start--
+	}
+	for end < len(s) && isIDChar(s[end]) {
+		end++
+	}
+	return s[start:end]
+}
+
+// placeholderShaped reports whether a token is letters, one hyphen, digits: the shape every
+// placeholder has, and one a version or an image name never has.
+func placeholderShaped(tok string) bool {
+	letters, hyphen, digits := 0, 0, 0
+	for i := 0; i < len(tok); i++ {
+		c := tok[i]
+		switch {
+		case (c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z') && hyphen == 0:
+			letters++
+		case c == '-' && letters > 0 && hyphen == 0:
+			hyphen++
+		case isDigit(c) && hyphen == 1:
+			digits++
+		default:
+			return false
+		}
+	}
+	return letters > 0 && hyphen == 1 && digits > 0
 }
 
 // Narrator produces the optional prose for one payload. A nil narrative is a valid answer and
@@ -865,6 +900,9 @@ func New(o Options) (Narrator, error) {
 	if u.Scheme != "http" && u.Scheme != "https" {
 		return nil, fmt.Errorf("narrate: base URL must be http or https, got %q", u.Scheme)
 	}
+	if u.Hostname() == "" {
+		return nil, fmt.Errorf("narrate: base URL %q names no host", strings.TrimSpace(o.BaseURL))
+	}
 	if strings.TrimSpace(o.Model) == "" {
 		return nil, fmt.Errorf("narrate: backend %q needs a model", backend)
 	}
@@ -875,7 +913,15 @@ func New(o Options) (Narrator, error) {
 		o.Timeout = defaultTimeout
 	}
 	o.Backend = backend
-	return &httpNarrator{opts: o, w: w, client: &http.Client{Timeout: o.Timeout}}, nil
+	client := &http.Client{
+		Timeout: o.Timeout,
+		// A redirect would carry the body and the key to whatever host the endpoint names,
+		// past the allowlist. A model endpoint has no reason to redirect, so none is followed.
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			return fmt.Errorf("the endpoint redirected to host %q, refusing to follow a redirect", req.URL.Hostname())
+		},
+	}
+	return &httpNarrator{opts: o, w: w, client: client}, nil
 }
 
 // httpNarrator is the only code path that can send anything off the machine, and it refuses
@@ -893,7 +939,10 @@ func (n *httpNarrator) Narrate(ctx context.Context, pl Payload) (*result.Narrati
 		fmt.Fprintln(os.Stderr, prompt)
 	}
 
-	u, err := url.Parse(strings.TrimSpace(n.opts.BaseURL))
+	// The allowlist is checked on the URL that is actually requested, not on the base it was
+	// derived from, and before the key is read: a refusal never touches the environment.
+	endpoint := n.w.url(n.opts.BaseURL)
+	u, err := url.Parse(endpoint)
 	if err != nil {
 		return nil, fmt.Errorf("narrate: base URL is not usable: %w", err)
 	}
@@ -901,9 +950,12 @@ func (n *httpNarrator) Narrate(ctx context.Context, pl Payload) (*result.Narrati
 		return nil, err
 	}
 
-	key := os.Getenv(n.opts.APIKeyEnv)
-	if strings.TrimSpace(key) == "" {
+	key := strings.TrimSpace(os.Getenv(n.opts.APIKeyEnv))
+	if key == "" {
 		return nil, fmt.Errorf("narrate: environment variable %s is empty, no API key to send", n.opts.APIKeyEnv)
+	}
+	if !usableKey(key) {
+		return nil, fmt.Errorf("narrate: environment variable %s holds a value with control characters, refusing to send it", n.opts.APIKeyEnv)
 	}
 
 	payload, err := n.w.body(n.opts.Model, prompt)
@@ -913,7 +965,7 @@ func (n *httpNarrator) Narrate(ctx context.Context, pl Payload) (*result.Narrati
 
 	callCtx, cancel := context.WithTimeout(ctx, n.opts.Timeout)
 	defer cancel()
-	req, err := http.NewRequestWithContext(callCtx, http.MethodPost, n.w.url(n.opts.BaseURL), bytes.NewReader(payload))
+	req, err := http.NewRequestWithContext(callCtx, http.MethodPost, endpoint, bytes.NewReader(payload))
 	if err != nil {
 		return nil, fmt.Errorf("narrate: could not build the %s request: %w", n.w.name(), err)
 	}
@@ -953,9 +1005,14 @@ func (n *httpNarrator) Narrate(ctx context.Context, pl Payload) (*result.Narrati
 }
 
 // allowHost is the egress gate. An empty allowlist refuses every host, because an operator who
-// never named an endpoint never agreed to any egress.
+// never named an endpoint never agreed to any egress. An entry is a host name or IP, matched
+// whole and case insensitively, on any port; an entry that carries a port matches that port
+// only. Nothing is resolved, nothing is matched by suffix.
 func allowHost(u *url.URL, allow []string) error {
 	host := u.Hostname()
+	if host == "" {
+		return fmt.Errorf("narrate: the endpoint names no host, refusing to send")
+	}
 	if len(allow) == 0 {
 		return fmt.Errorf("narrate: no host is in the allowlist, refusing to send anything to %q", host)
 	}
@@ -964,11 +1021,24 @@ func allowHost(u *url.URL, allow []string) error {
 		if e == "" {
 			continue
 		}
-		if strings.EqualFold(e, host) || strings.EqualFold(e, u.Host) {
+		// An IPv6 literal may be written with or without its brackets.
+		bare := strings.TrimSuffix(strings.TrimPrefix(e, "["), "]")
+		if strings.EqualFold(bare, host) || strings.EqualFold(e, u.Host) {
 			return nil
 		}
 	}
 	return fmt.Errorf("narrate: host %q is not in the allowlist %v, refusing to send", host, allow)
+}
+
+// usableKey refuses a key that could not be a header value, so a bad paste never reaches the
+// wire and never has to be quoted back in an error.
+func usableKey(key string) bool {
+	for i := 0; i < len(key); i++ {
+		if key[i] < 0x20 || key[i] == 0x7f {
+			return false
+		}
+	}
+	return true
 }
 
 func sha256Hex(s string) string {

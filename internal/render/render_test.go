@@ -420,10 +420,12 @@ func TestHeldBackLineNamesWhatIsHidden(t *testing.T) {
 	})
 
 	t.Run("with nothing held back", func(t *testing.T) {
-		// One dimension, one suspect, no gap: there is genuinely nothing more to show.
+		// One dimension, one suspect whose diff fits under the headline, no gap: there is
+		// genuinely nothing more to show.
 		r := realisticWhy()
 		r.Dimensions = r.Dimensions[:1]
 		r.Suspects = r.Suspects[:1]
+		r.Suspects[0].Diff = r.Suspects[0].Diff[:3]
 		r.Gaps = nil
 
 		got := WhyText(r, shortOptions())

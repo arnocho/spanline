@@ -55,7 +55,7 @@ func sampleWhy() *result.WhyReport {
 			},
 		},
 		Suspects: []result.Suspect{{
-			ID:        "chg-0007",
+			ID:        "chg-0007", // never copied into the payload: citation ids are positional
 			Verdict:   result.Splits,
 			At:        at,
 			Title:     "memory limit lowered on " + realWorkload + " in " + realNamespace,
@@ -167,21 +167,21 @@ func TestPayloadForWhyKeepsOnlyAllowlistedFields(t *testing.T) {
 	p := redact.NewPseudonymizer("run-salt")
 	pl := PayloadForWhy(sampleWhy(), p)
 
-	mem, ok := factByID(pl, "chg-0007.diff.memory.limit")
+	mem, ok := factByID(pl, "chg-0001.diff.memory.limit")
 	if !ok {
 		t.Fatalf("no memory limit fact, got %#v", pl.Facts)
 	}
 	if mem.Before != "512Mi" || mem.After != "256Mi" {
 		t.Errorf("memory limit fact = %q -> %q, want 512Mi -> 256Mi", mem.Before, mem.After)
 	}
-	if _, ok := factByID(pl, "chg-0007.diff.replicas"); !ok {
+	if _, ok := factByID(pl, "chg-0001.diff.replicas"); !ok {
 		t.Error("the replica count did not survive the allowlist")
 	}
-	if _, ok := factByID(pl, "chg-0007.verdict"); !ok {
+	if _, ok := factByID(pl, "chg-0001.verdict"); !ok {
 		t.Error("the suspect verdict did not survive the allowlist")
 	}
 
-	img, ok := factByID(pl, "chg-0007.diff.image.tag")
+	img, ok := factByID(pl, "chg-0001.diff.image.tag")
 	if !ok {
 		t.Fatal("the image tag did not survive the allowlist")
 	}
@@ -240,7 +240,7 @@ func TestPromptIsDeterministic(t *testing.T) {
 	if a != b {
 		t.Fatal("Prompt is not deterministic, so PromptSHA could not be trusted")
 	}
-	if !strings.Contains(a, "[chg-0007.diff.memory.limit]") {
+	if !strings.Contains(a, "[chg-0001.diff.memory.limit]") {
 		t.Fatalf("the prompt does not offer the citation id, got:\n%s", a)
 	}
 }
@@ -248,9 +248,9 @@ func TestPromptIsDeterministic(t *testing.T) {
 func TestValidateDropsUncitedAndInventedNumbers(t *testing.T) {
 	pl := PayloadForWhy(sampleWhy(), redact.NewPseudonymizer("run-salt"))
 
-	good := "The memory limit fell from 512Mi to 256Mi [chg-0007.diff.memory.limit]."
+	good := "The memory limit fell from 512Mi to 256Mi [chg-0001.diff.memory.limit]."
 	uncited := "The root cause was a bad deploy on Tuesday evening."
-	invented := "The workload now runs 9 replicas [chg-0007.diff.replicas]."
+	invented := "The workload now runs 9 replicas [chg-0001.diff.replicas]."
 
 	kept, dropped := Validate(good+" "+uncited+" "+invented, pl)
 	if dropped != 2 {
@@ -261,7 +261,7 @@ func TestValidateDropsUncitedAndInventedNumbers(t *testing.T) {
 	}
 
 	// A sentence may reuse a placeholder that was sent, because a name is not a number.
-	withName, dropped := Validate("The limit on "+mustFact(t, pl, "scope.workload").After+" fell to 256Mi [chg-0007.diff.memory.limit].", pl)
+	withName, dropped := Validate("The limit on "+mustFact(t, pl, "scope.workload").After+" fell to 256Mi [chg-0001.diff.memory.limit].", pl)
 	if dropped != 0 || withName == "" {
 		t.Fatalf("a sentence citing a real fact was dropped: kept %q, dropped %d", withName, dropped)
 	}
@@ -350,7 +350,7 @@ func TestHTTPNarratorRefusesAHostOutsideTheAllowlist(t *testing.T) {
 }
 
 func TestHTTPNarratorValidatesWhatComesBack(t *testing.T) {
-	const answer = "The memory limit fell from 512Mi to 256Mi [chg-0007.diff.memory.limit]. " +
+	const answer = "The memory limit fell from 512Mi to 256Mi [chg-0001.diff.memory.limit]. " +
 		"You should roll back immediately, the cause is obvious."
 
 	var seenAuth, seenBody atomic.Value
@@ -398,7 +398,7 @@ func TestHTTPNarratorValidatesWhatComesBack(t *testing.T) {
 	if !strings.Contains(got.Text, "512Mi") {
 		t.Errorf("the cited sentence did not survive: %q", got.Text)
 	}
-	if len(got.Citations) != 1 || got.Citations[0] != "chg-0007.diff.memory.limit" {
+	if len(got.Citations) != 1 || got.Citations[0] != "chg-0001.diff.memory.limit" {
 		t.Errorf("Citations = %v, want the one cited fact", got.Citations)
 	}
 	if len(got.PromptSHA) != 64 || len(got.AnswerSHA) != 64 {

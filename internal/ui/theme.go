@@ -29,6 +29,7 @@ var (
 type Theme struct {
 	Width int
 	Color bool
+	Pulse bool // set by the app on the selected row for a moment after the selection moves
 }
 
 // NewTheme clamps the width to something readable and remembers whether colour is allowed.
@@ -127,6 +128,9 @@ func (t Theme) Card(selected bool, sev result.Severity, label, title, note strin
 	if selected {
 		bar = "┃"
 		caret = t.Accent("› ")
+		if t.Pulse {
+			caret = t.Accent("▸ ")
+		}
 	}
 	lab, labw := "", 0
 	if label != "" {
@@ -211,6 +215,17 @@ func (t Theme) Meter(frac float64, width int, sev result.Severity) string {
 		filled = width
 	}
 	return t.paint(sevColor(sev), strings.Repeat("█", filled)) + t.paint(colLine, strings.Repeat("░", width-filled))
+}
+
+// caret marks the selected row, brighter for a moment right after the selection moved.
+func (t Theme) caret(selected bool) string {
+	if !selected {
+		return "  "
+	}
+	if t.Pulse {
+		return t.Accent("▸ ")
+	}
+	return t.Accent("› ")
 }
 
 func pad(s string, n int) string {

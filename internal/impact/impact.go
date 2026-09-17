@@ -2,13 +2,14 @@
 // or if this Terraform plan runs, what breaks on the live cluster.
 //
 // Every function here is a pure function of a snapshot. Nothing is evicted, cordoned or drained,
-// and the Kubernetes Eviction API is never called, because calling it would need a write verb.
+// and the Kubernetes Eviction API is never called, since calling it would need a write verb.
 // The simulation happens in memory only. Anything the snapshot cannot settle is reported as
 // NOT ASSESSED rather than dropped, so a short report is never mistaken for a safe one.
 package impact
 
 import (
 	"fmt"
+	"math"
 	"sort"
 	"strings"
 	"time"
@@ -195,7 +196,7 @@ func (a *analysis) summarise(object string) {
 		[]string{
 			"nodes that go away: " + joinCapped(append([]string(nil), a.order...), listCap),
 			fmt.Sprintf("spec.nodeName: %d live pods run on them", len(a.doomedPods())),
-			"spec.unschedulable and spec.taints with effect NoSchedule decide which survivors accept pods",
+			"spec.unschedulable and spec.taints with effect NoSchedule or NoExecute decide which survivors accept pods",
 		})
 }
 
@@ -230,12 +231,14 @@ func (w workloadKey) object() string {
 	return w.Namespace + "/" + w.Name
 }
 
-// workloadGroup is one workload with its live pods and the ones that go away.
+// workloadGroup is one workload with its live pods and the ones that go away. unplaced counts
+// the live pods with no spec.nodeName: they run nowhere, so they survive nothing.
 type workloadGroup struct {
 	key      workloadKey
 	replicas int
 	live     []model.Pod
 	doomed   []model.Pod
+	unplaced int
 	how      string
 }
 
@@ -271,7 +274,10 @@ func (a *analysis) groupWorkloads() []workloadGroup {
 			keys = append(keys, key)
 		}
 		g.live = append(g.live, p)
-		if a.doomed[p.Spec.NodeName] {
+		switch {
+		case p.Spec.NodeName == "":
+			g.unplaced++
+		case a.doomed[p.Spec.NodeName]:
 			g.doomed = append(g.doomed, p)
 		}
 	}
@@ -294,13 +300,20 @@ func (a *analysis) groupWorkloads() []workloadGroup {
 	return out
 }
 
+// ownerOf names the workload a pod belongs to, and says which fields settled it. The chain in
+// metadata.ownerReferences is followed when it lands on a kind spanline reads. A ReplicaSet
+// missing from the snapshot, or a pod with no owner at all, falls back to a workload selector
+// match in the same namespace. An owner of a kind spanline does not read is kept as the owner:
+// the pod has a controller, so it is never described as a bare pod.
 func ownerOf(p model.Pod, rs map[string]model.ReplicaSet, workloads []model.Workload) (workloadKey, string) {
 	ns := p.Metadata.Namespace
+	var missing []string
 	for _, o := range p.Metadata.OwnerReferences {
 		switch o.Kind {
 		case "ReplicaSet":
 			r, ok := rs[ns+"/"+o.Name]
 			if !ok {
+				missing = append(missing, o.Name)
 				continue
 			}
 			for _, ro := range r.Metadata.OwnerReferences {
@@ -316,18 +329,37 @@ func ownerOf(p model.Pod, rs map[string]model.ReplicaSet, workloads []model.Work
 				"metadata.ownerReferences: pod to " + o.Kind + " " + o.Name
 		}
 	}
-	for _, w := range workloads {
-		if w.Metadata.Namespace != ns {
-			continue
+
+	owned := len(p.Metadata.OwnerReferences) > 0
+	if !owned || len(missing) > 0 {
+		why := "the pod has no metadata.ownerReferences"
+		if len(missing) > 0 {
+			why = "its owning ReplicaSet " + missing[0] + " is not in the snapshot"
 		}
-		if model.SelectorMatches(w.Spec.Selector, p.Metadata.Labels) {
-			return workloadKey{Kind: w.Kind, Namespace: ns, Name: w.Metadata.Name},
-				"spec.selector.matchLabels of " + w.Kind + " " + w.Metadata.Name +
-					" matches metadata.labels of the pod, and the owning ReplicaSet was not in the snapshot"
+		for _, w := range workloads {
+			if w.Metadata.Namespace != ns {
+				continue
+			}
+			if model.SelectorMatches(w.Spec.Selector, p.Metadata.Labels) {
+				return workloadKey{Kind: w.Kind, Namespace: ns, Name: w.Metadata.Name},
+					"spec.selector.matchLabels of " + w.Kind + " " + w.Metadata.Name +
+						" matches metadata.labels of the pod, and " + why
+			}
 		}
 	}
+	if len(missing) > 0 {
+		return workloadKey{Kind: "ReplicaSet", Namespace: ns, Name: missing[0]},
+			"metadata.ownerReferences: pod to ReplicaSet " + missing[0] +
+				", which is not in the snapshot, and no workload selector matches metadata.labels"
+	}
+	if owned {
+		o := p.Metadata.OwnerReferences[0]
+		return workloadKey{Kind: o.Kind, Namespace: ns, Name: o.Name},
+			"metadata.ownerReferences: pod to " + o.Kind + " " + o.Name +
+				", a controller kind spanline does not read, so its replica count is unknown"
+	}
 	return workloadKey{Kind: "Pod", Namespace: ns, Name: p.Metadata.Name},
-		"metadata.ownerReferences names no controller in the snapshot and no workload selector matches metadata.labels"
+		"metadata.ownerReferences: none, and no workload selector matches metadata.labels"
 }
 
 // checkWorkloads reports a workload that loses every replica, and one left thin enough to matter.
@@ -336,12 +368,15 @@ func (a *analysis) checkWorkloads(groups []workloadGroup) {
 		if len(g.doomed) == 0 {
 			continue
 		}
-		surviving := len(g.live) - len(g.doomed)
+		surviving := len(g.live) - len(g.doomed) - g.unplaced
 		ev := []string{
 			fmt.Sprintf("spec.nodeName: %d of %d live pods stand on nodes that go away", len(g.doomed), len(g.live)),
 			"pods that go away: " + joinCapped(podNames(g.doomed), listCap),
 			g.how,
 			"status.phase: a live pod is one that is neither Succeeded nor Failed",
+		}
+		if g.unplaced > 0 {
+			ev = append(ev, fmt.Sprintf("spec.nodeName: %d live pods have no spec.nodeName, so they run nowhere and do not count as surviving", g.unplaced))
 		}
 		if g.replicas >= 0 {
 			ev = append(ev, fmt.Sprintf("spec.replicas: %d", g.replicas))
@@ -351,8 +386,12 @@ func (a *analysis) checkWorkloads(groups []workloadGroup) {
 		switch {
 		case surviving == 0 && g.key.Kind == "Pod":
 			a.addCtx(result.Outage, g.key.Kind, g.key.object(),
-				"this pod has no controller in the snapshot, so once its node goes away nothing recreates it",
+				"this pod has no metadata.ownerReferences, so once its node goes away nothing recreates it",
 				ev, "a bare pod is not rescheduled by Kubernetes")
+		case surviving == 0 && g.unplaced > 0:
+			a.add(result.Outage, g.key.Kind, g.key.object(),
+				fmt.Sprintf("the %d live pods of this workload either stand on a node that goes away or have no node yet, so nothing of it keeps running", len(g.live)),
+				ev)
 		case surviving == 0:
 			a.add(result.Outage, g.key.Kind, g.key.object(),
 				fmt.Sprintf("every live pod of this workload stands on a node that goes away, so it drops from %d to 0", len(g.live)),
@@ -378,15 +417,27 @@ func (a *analysis) checkPDBs(doomed []model.Pod) {
 			pdbs[j].Metadata.Namespace+"/"+pdbs[j].Metadata.Name
 	})
 
+	doomedIn := map[string]int{}
+	for _, p := range doomed {
+		doomedIn[p.Metadata.Namespace]++
+	}
+
 	covers := map[string][]string{}
 	var covered []string
 	for _, pdb := range pdbs {
 		obj := pdb.Metadata.Namespace + "/" + pdb.Metadata.Name
 		if pdb.Spec.Selector == nil || len(pdb.Spec.Selector.MatchLabels) == 0 {
+			// A budget only reaches pods of its own namespace: with none of them going away,
+			// what it covers cannot matter here, and saying otherwise would be a false gap.
+			n := doomedIn[pdb.Metadata.Namespace]
+			if n == 0 {
+				continue
+			}
 			a.add(result.NotAssessed, "PodDisruptionBudget", obj,
-				"this budget has no spec.selector.matchLabels, so spanline cannot tell which pods it covers and cannot say whether it would block a drain",
+				"this budget has no spec.selector.matchLabels, so spanline cannot tell which of the pods going away in its namespace it covers, and cannot say whether it would block a drain",
 				[]string{
 					"spec.selector.matchLabels: empty or expression based, which this check does not read",
+					fmt.Sprintf("spec.nodeName: %d live pods of namespace %s stand on nodes that go away", n, pdb.Metadata.Namespace),
 					fmt.Sprintf("status.disruptionsAllowed: %d", pdb.Status.DisruptionsAllowed),
 				})
 			continue
@@ -492,21 +543,33 @@ func (a *analysis) checkVolumes(doomed []model.Pod) {
 					})
 				continue
 			}
-			zoneKey, zones := pinnedZones(pv)
-			if len(zones) == 0 {
+			terms := requiredTerms(pv)
+			if len(terms) == 0 {
+				continue
+			}
+			affinity := "PersistentVolume " + pv.Metadata.Name + " spec.nodeAffinity.required.nodeSelectorTerms[].matchExpressions: " + describeTerms(terms)
+			if gap := unreadableTerm(terms); gap != "" {
+				a.add(result.NotAssessed, "PersistentVolumeClaim", claim,
+					"this claim's volume has a node affinity spanline does not evaluate, so whether the pod can come back where its data is cannot be said",
+					[]string{
+						"spec.volumes[].persistentVolumeClaim.claimName: " + v.PersistentVolumeClaim.ClaimName,
+						"PersistentVolumeClaim " + claim + " spec.volumeName: " + pvc.Spec.VolumeName + ", status.phase: " + pvc.Status.Phase,
+						affinity,
+						gap,
+						"pod " + podName(p) + " spec.nodeName: " + p.Spec.NodeName + ", which goes away",
+					})
 				continue
 			}
 
-			var inZone, samePool []string
+			var reachable, samePool []string
 			for _, n := range survivors {
 				if ok, _ := schedulable(n); !ok {
 					continue
 				}
-				_, z, has := nodeZone(n)
-				if !has || !contains(zones, z) {
+				if !termsMatch(terms, n.Metadata.Labels) {
 					continue
 				}
-				inZone = append(inZone, describeNode(n))
+				reachable = append(reachable, describeNode(n))
 				if hasPool {
 					if _, pool, _ := nodePool(n); pool == podPool {
 						samePool = append(samePool, n.Metadata.Name)
@@ -514,28 +577,28 @@ func (a *analysis) checkVolumes(doomed []model.Pod) {
 				}
 			}
 
+			pin := pinPhrase(terms)
 			ev := []string{
 				"spec.volumes[].persistentVolumeClaim.claimName: " + v.PersistentVolumeClaim.ClaimName,
 				"PersistentVolumeClaim " + claim + " spec.volumeName: " + pvc.Spec.VolumeName + ", status.phase: " + pvc.Status.Phase,
-				"PersistentVolume " + pv.Metadata.Name + " spec.nodeAffinity.required.nodeSelectorTerms[].matchExpressions: " +
-					zoneKey + " In [" + strings.Join(zones, ", ") + "]",
+				affinity,
 				"pod " + podName(p) + " spec.nodeName: " + p.Spec.NodeName + ", which goes away",
-				"surviving schedulable nodes in that zone: " + emptyOr(joinCapped(inZone, listCap), "none"),
-				"a node is counted out when spec.unschedulable is true or it carries a taint with effect NoSchedule",
+				"surviving schedulable nodes whose metadata.labels satisfy it: " + emptyOr(joinCapped(reachable, listCap), "none"),
+				"a node is counted out when spec.unschedulable is true or it carries a taint with effect NoSchedule or NoExecute",
 			}
 			if hasPool {
 				ev = append(ev, "pool of the pod's node, from "+podPoolKey+": "+podPool)
 			}
 
 			switch {
-			case len(inZone) == 0:
+			case len(reachable) == 0:
 				a.addCtx(result.Disruption, "PersistentVolumeClaim", claim,
-					"this volume is pinned to zone "+strings.Join(zones, " or ")+" and no surviving schedulable node is in that zone, so the pod cannot be rescheduled anywhere it can reach its data",
-					ev, "a zone pinned volume never follows a pod to another zone")
+					"this volume is pinned to "+pin+" and no surviving schedulable node satisfies that, so the pod cannot be rescheduled anywhere it can reach its data",
+					ev, "a node pinned volume never follows a pod to a node outside its affinity")
 			case hasPool && len(samePool) == 0:
 				a.addCtx(result.Disruption, "PersistentVolumeClaim", claim,
-					"this volume is pinned to zone "+strings.Join(zones, " or ")+" and no surviving schedulable node of pool "+podPool+
-						" is left in that zone, so the pod can only come back on a node outside its own pool",
+					"this volume is pinned to "+pin+" and no surviving schedulable node of pool "+podPool+
+						" satisfies that, so the pod can only come back on a node outside its own pool",
 					ev, "replacement and surge nodes the change creates are not modelled, so this describes the window, not the end state")
 			}
 		}
@@ -551,8 +614,8 @@ func (a *analysis) checkCapacity(doomed []model.Pod) {
 	var partial []string
 	for _, p := range doomed {
 		cpu, mem, complete := podRequests(p)
-		wantCPU += cpu
-		wantMem += mem
+		wantCPU = addCapped(wantCPU, cpu)
+		wantMem = addCapped(wantMem, mem)
 		if !complete {
 			partial = append(partial, podName(p))
 		}
@@ -565,7 +628,7 @@ func (a *analysis) checkCapacity(doomed []model.Pod) {
 		}
 		cpu, mem, _ := podRequests(p)
 		cur := used[p.Spec.NodeName]
-		used[p.Spec.NodeName] = [2]int64{cur[0] + cpu, cur[1] + mem}
+		used[p.Spec.NodeName] = [2]int64{addCapped(cur[0], cpu), addCapped(cur[1], mem)}
 	}
 
 	var freeCPU, freeMem int64
@@ -579,13 +642,13 @@ func (a *analysis) checkCapacity(doomed []model.Pod) {
 		alloc := n.Status.Allocatable
 		cpu, okCPU := model.ParseCPU(alloc["cpu"])
 		mem, okMem := model.ParseMemory(alloc["memory"])
-		if !okCPU || !okMem {
+		if !okCPU || !okMem || cpu < 0 || mem < 0 {
 			unreadable = append(unreadable, n.Metadata.Name)
 			continue
 		}
 		u := used[n.Metadata.Name]
-		freeCPU += max0(cpu - u[0])
-		freeMem += max0(mem - u[1])
+		freeCPU = addCapped(freeCPU, max0(cpu-u[0]))
+		freeMem = addCapped(freeMem, max0(mem-u[1]))
 		counted = append(counted, n.Metadata.Name)
 	}
 
@@ -599,7 +662,7 @@ func (a *analysis) checkCapacity(doomed []model.Pod) {
 		ev = append(ev, "surviving schedulable nodes counted: "+joinCapped(counted, listCap))
 	}
 	if len(excluded) > 0 {
-		ev = append(ev, "surviving nodes left out because they take no new pod: "+joinCapped(excluded, listCap))
+		ev = append(ev, "surviving nodes left out, as they take no new pod: "+joinCapped(excluded, listCap))
 	}
 
 	if wantCPU > freeCPU || wantMem > freeMem {
@@ -676,16 +739,18 @@ func nodeZone(n model.Node) (string, string, bool) {
 }
 
 // schedulable says whether a node still takes new pods, and names the field that says otherwise.
+// A NoExecute taint refuses new pods exactly as a NoSchedule taint does, and evicts the running
+// ones on top, so both count a node out.
 func schedulable(n model.Node) (bool, string) {
 	if n.Spec.Unschedulable {
 		return false, "spec.unschedulable: true"
 	}
 	for _, t := range n.Spec.Taints {
-		if t.Effect == "NoSchedule" {
+		if t.Effect == "NoSchedule" || t.Effect == "NoExecute" {
 			if t.Value == "" {
-				return false, "spec.taints: " + t.Key + ":NoSchedule"
+				return false, "spec.taints: " + t.Key + ":" + t.Effect
 			}
-			return false, "spec.taints: " + t.Key + "=" + t.Value + ":NoSchedule"
+			return false, "spec.taints: " + t.Key + "=" + t.Value + ":" + t.Effect
 		}
 	}
 	return true, ""
@@ -698,41 +763,123 @@ func describeNode(n model.Node) string {
 	return n.Metadata.Name
 }
 
-// pinnedZones reads the zone a PersistentVolume's node affinity pins it to.
-func pinnedZones(pv model.PersistentVolume) (string, []string) {
+// requiredTerms reads the node selector terms a PersistentVolume's required node affinity
+// carries. The scheduler compares each term against node labels, term by term, ORed.
+func requiredTerms(pv model.PersistentVolume) []model.NodeSelectorTerm {
 	if pv.Spec.NodeAffinity == nil || pv.Spec.NodeAffinity.Required == nil {
-		return "", nil
+		return nil
 	}
+	return pv.Spec.NodeAffinity.Required.NodeSelectorTerms
+}
+
+// unreadableTerm names the first part of a node affinity this check cannot evaluate: an
+// operator other than In, NotIn, Exists and DoesNotExist, or a term with no matchExpressions,
+// which may carry matchFields spanline does not read. Empty when every term is readable.
+func unreadableTerm(terms []model.NodeSelectorTerm) string {
+	for _, term := range terms {
+		if len(term.MatchExpressions) == 0 {
+			return "a nodeSelectorTerm with no matchExpressions, which may use matchFields, which this check does not read"
+		}
+		for _, req := range term.MatchExpressions {
+			switch req.Operator {
+			case "In", "NotIn", "Exists", "DoesNotExist":
+			default:
+				return "operator " + req.Operator + " on " + req.Key + " is not evaluated: only In, NotIn, Exists and DoesNotExist are"
+			}
+		}
+	}
+	return ""
+}
+
+// termsMatch says whether a node's labels satisfy at least one term, every expression of it.
+func termsMatch(terms []model.NodeSelectorTerm, labels map[string]string) bool {
+	for _, term := range terms {
+		ok := len(term.MatchExpressions) > 0
+		for _, req := range term.MatchExpressions {
+			v, has := labels[req.Key]
+			switch req.Operator {
+			case "In":
+				ok = ok && has && contains(req.Values, v)
+			case "NotIn":
+				ok = ok && !(has && contains(req.Values, v))
+			case "Exists":
+				ok = ok && has
+			case "DoesNotExist":
+				ok = ok && !has
+			default:
+				ok = false
+			}
+		}
+		if ok {
+			return true
+		}
+	}
+	return false
+}
+
+// describeTerms prints an affinity the way its fields read: terms ORed, expressions ANDed.
+func describeTerms(terms []model.NodeSelectorTerm) string {
+	parts := make([]string, 0, len(terms))
+	for _, term := range terms {
+		exprs := make([]string, 0, len(term.MatchExpressions))
+		for _, req := range term.MatchExpressions {
+			switch req.Operator {
+			case "Exists", "DoesNotExist":
+				exprs = append(exprs, req.Key+" "+req.Operator)
+			default:
+				exprs = append(exprs, req.Key+" "+req.Operator+" ["+strings.Join(req.Values, ", ")+"]")
+			}
+		}
+		if len(exprs) == 0 {
+			exprs = append(exprs, "no matchExpressions")
+		}
+		parts = append(parts, strings.Join(exprs, " and "))
+	}
+	return strings.Join(parts, " or ")
+}
+
+// pinPhrase says in words what a volume is pinned to. A single key compared with In reads as
+// its zone or its node; anything else is spelled out as written.
+func pinPhrase(terms []model.NodeSelectorTerm) string {
 	key := ""
 	seen := map[string]bool{}
-	var zones []string
-	for _, term := range pv.Spec.NodeAffinity.Required.NodeSelectorTerms {
+	var values []string
+	for _, term := range terms {
 		for _, req := range term.MatchExpressions {
-			if !isZoneKey(req.Key) || req.Operator != "In" {
-				continue
+			if req.Operator != "In" || (key != "" && req.Key != key) {
+				return describeTerms(terms)
 			}
-			if key == "" {
-				key = req.Key
-			}
+			key = req.Key
 			for _, v := range req.Values {
 				if !seen[v] {
 					seen[v] = true
-					zones = append(zones, v)
+					values = append(values, v)
 				}
 			}
 		}
 	}
-	sort.Strings(zones)
-	return key, zones
+	sort.Strings(values)
+	switch {
+	case key == "":
+		return describeTerms(terms)
+	case isZoneKey(key):
+		return "zone " + strings.Join(values, " or ")
+	case key == "kubernetes.io/hostname":
+		return "node " + strings.Join(values, " or ")
+	default:
+		return key + " in [" + strings.Join(values, ", ") + "]"
+	}
 }
 
+// isZoneKey recognises the failure domain keys: the two Kubernetes ones, and the per driver CSI
+// topology keys, which all end in /zone.
 func isZoneKey(k string) bool {
 	for _, z := range zoneLabelKeys {
 		if z == k {
 			return true
 		}
 	}
-	return false
+	return strings.HasSuffix(k, "/zone")
 }
 
 func podLive(p model.Pod) bool {
@@ -775,22 +922,33 @@ func nodeNameOfPod(a *analysis, name string) string {
 }
 
 // podRequests sums the container requests of a pod, and says whether every number was readable.
+// A request that reads as a negative number is not a number the scheduler would accept, so it
+// counts as unreadable rather than as a credit.
 func podRequests(p model.Pod) (int64, int64, bool) {
 	var cpu, mem int64
 	complete := len(p.Spec.Containers) > 0
 	for _, c := range p.Spec.Containers {
-		if v, ok := model.ParseCPU(c.Resources.Requests["cpu"]); ok {
-			cpu += v
+		if v, ok := model.ParseCPU(c.Resources.Requests["cpu"]); ok && v >= 0 {
+			cpu = addCapped(cpu, v)
 		} else {
 			complete = false
 		}
-		if v, ok := model.ParseMemory(c.Resources.Requests["memory"]); ok {
-			mem += v
+		if v, ok := model.ParseMemory(c.Resources.Requests["memory"]); ok && v >= 0 {
+			mem = addCapped(mem, v)
 		} else {
 			complete = false
 		}
 	}
 	return cpu, mem, complete
+}
+
+// addCapped adds two non-negative quantities and stops at the int64 ceiling instead of wrapping
+// to a negative total that would read as a load that fits anywhere.
+func addCapped(a, b int64) int64 {
+	if a > math.MaxInt64-b {
+		return math.MaxInt64
+	}
+	return a + b
 }
 
 func budgetLine(pdb model.PodDisruptionBudget) string {

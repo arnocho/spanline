@@ -251,7 +251,8 @@ func ExitCodeFor(findings []Finding) (Severity, int) {
 		return top, 3
 	case Disruption:
 		return top, 2
-	case NotAssessed:
+	case Risk, NotAssessed:
+		// a risk is not a pass either: something would be left fragile, or was not looked at
 		return top, 1
 	default:
 		return top, 0

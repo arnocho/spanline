@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/arnocho/spanline/internal/model"
 	"github.com/arnocho/spanline/internal/result"
@@ -27,7 +28,14 @@ type change struct {
 }
 
 func (a *analysis) inWindow(t time.Time) bool {
-	if t.IsZero() || t.After(a.now) {
+	if t.IsZero() {
+		return false
+	}
+	if a.now.IsZero() {
+		// No reference time: the window cannot be applied, which Analyze lists as a gap.
+		return true
+	}
+	if t.After(a.now) {
 		return false
 	}
 	return !t.Before(a.now.Add(-a.window))
@@ -46,7 +54,8 @@ func (a *analysis) ownedReplicaSets() []model.ReplicaSet {
 		out = append(out, rs)
 	}
 	sort.Slice(out, func(i, j int) bool {
-		ri, rj := revisionNumber(out[i].Metadata), revisionNumber(out[j].Metadata)
+		ri, _ := revisionNumber(out[i].Metadata)
+		rj, _ := revisionNumber(out[j].Metadata)
 		if ri != rj {
 			return ri < rj
 		}
@@ -79,6 +88,19 @@ func (a *analysis) ownedControllerRevisions() []model.ControllerRevision {
 	return out
 }
 
+// revisionKey is the value the workload's pods carry in their controller-revision-hash
+// label for one ControllerRevision. A StatefulSet stamps the revision's name on its pods;
+// a DaemonSet stamps the bare hash the revision itself is labelled with.
+func (a *analysis) revisionKey(cr model.ControllerRevision) string {
+	if a.work.Kind == "StatefulSet" {
+		return cr.Metadata.Name
+	}
+	if hash := cr.Metadata.Labels[labelControllerRevision]; hash != "" {
+		return hash
+	}
+	return cr.Metadata.Name
+}
+
 func ownedBy(refs []model.OwnerReference, w model.Workload) bool {
 	for _, r := range refs {
 		if r.Kind != w.Kind || r.Name != w.Metadata.Name {
@@ -92,13 +114,26 @@ func ownedBy(refs []model.OwnerReference, w model.Workload) bool {
 	return false
 }
 
-func revisionNumber(m model.ObjectMeta) int {
-	if v, ok := m.Annotations[annotationRevision]; ok {
-		if n, err := strconv.Atoi(strings.TrimSpace(v)); err == nil {
-			return n
-		}
+// revisionNumber reads the Deployment revision annotation. ok is false when the annotation
+// is absent or unreadable: the number is then 0 and is never printed as a fact.
+func revisionNumber(m model.ObjectMeta) (int, bool) {
+	v, ok := m.Annotations[annotationRevision]
+	if !ok {
+		return 0, false
 	}
-	return 0
+	n, err := strconv.Atoi(strings.TrimSpace(v))
+	if err != nil {
+		return 0, false
+	}
+	return n, true
+}
+
+// revisionLabel names a ReplicaSet's revision for a title or an evidence line.
+func revisionLabel(m model.ObjectMeta) string {
+	if n, ok := revisionNumber(m); ok {
+		return fmt.Sprintf("at revision %d", n)
+	}
+	return "with no revision annotation"
 }
 
 func replicasOf(spec model.WorkloadSpec) int {
@@ -129,20 +164,32 @@ func (a *analysis) revisionChanges() []change {
 				len(sets), a.workloadRef())
 		}
 		for i, rs := range sets {
+			if _, ok := revisionNumber(rs.Metadata); !ok {
+				a.gap("ReplicaSet %s carries no readable %s annotation: its revision number is unknown and it is ordered by creation time",
+					rs.Metadata.Name, annotationRevision)
+			}
+			if rs.Metadata.CreationTimestamp.IsZero() {
+				a.gap("ReplicaSet %s carries no creationTimestamp: it cannot be placed in the window and is not ranked", rs.Metadata.Name)
+			}
 			if !a.inWindow(rs.Metadata.CreationTimestamp) {
 				continue
 			}
 			c := change{
 				id:      "replicaset/" + rs.Metadata.Name,
 				at:      rs.Metadata.CreationTimestamp,
-				title:   fmt.Sprintf("ReplicaSet %s created at revision %d", rs.Metadata.Name, revisionNumber(rs.Metadata)),
+				title:   fmt.Sprintf("ReplicaSet %s created %s", rs.Metadata.Name, revisionLabel(rs.Metadata)),
 				onOwner: true,
 				evidence: []string{
 					fmt.Sprintf("replicaset %s/%s metadata.creationTimestamp %s",
 						rs.Metadata.Namespace, rs.Metadata.Name, rs.Metadata.CreationTimestamp.UTC().Format(time.RFC3339)),
-					fmt.Sprintf("replicaset %s/%s metadata.annotations[%s] = %d",
-						rs.Metadata.Namespace, rs.Metadata.Name, annotationRevision, revisionNumber(rs.Metadata)),
 				},
+			}
+			if n, ok := revisionNumber(rs.Metadata); ok {
+				c.evidence = append(c.evidence, fmt.Sprintf("replicaset %s/%s metadata.annotations[%s] = %d",
+					rs.Metadata.Namespace, rs.Metadata.Name, annotationRevision, n))
+			} else {
+				c.evidence = append(c.evidence, fmt.Sprintf("replicaset %s/%s metadata.annotations[%s] is absent",
+					rs.Metadata.Namespace, rs.Metadata.Name, annotationRevision))
 			}
 			if hash := rs.Metadata.Labels[labelPodTemplateHash]; hash != "" {
 				c.values = map[string]string{labelPodTemplateHash: hash}
@@ -153,8 +200,8 @@ func (a *analysis) revisionChanges() []change {
 				prev := sets[i-1]
 				c.diff = templateDiff(prev.Spec.Template, rs.Spec.Template,
 					replicasOf(prev.Spec), replicasOf(rs.Spec))
-				c.evidence = append(c.evidence, fmt.Sprintf("diffed against replicaset %s/%s at revision %d",
-					prev.Metadata.Namespace, prev.Metadata.Name, revisionNumber(prev.Metadata)))
+				c.evidence = append(c.evidence, fmt.Sprintf("diffed against replicaset %s/%s %s",
+					prev.Metadata.Namespace, prev.Metadata.Name, revisionLabel(prev.Metadata)))
 			} else {
 				c.evidence = append(c.evidence, "no older ReplicaSet is retained: no template diff is available")
 			}
@@ -172,6 +219,9 @@ func (a *analysis) revisionChanges() []change {
 			len(revs), a.workloadRef())
 	}
 	for i, cr := range revs {
+		if cr.Metadata.CreationTimestamp.IsZero() {
+			a.gap("ControllerRevision %s carries no creationTimestamp: it cannot be placed in the window and is not ranked", cr.Metadata.Name)
+		}
 		if !a.inWindow(cr.Metadata.CreationTimestamp) {
 			continue
 		}
@@ -186,11 +236,7 @@ func (a *analysis) revisionChanges() []change {
 				fmt.Sprintf("controllerrevision %s/%s revision = %d", cr.Metadata.Namespace, cr.Metadata.Name, cr.Revision),
 			},
 		}
-		hash := cr.Metadata.Labels[labelControllerRevision]
-		if hash == "" {
-			hash = cr.Metadata.Name
-		}
-		c.values = map[string]string{labelControllerRevision: hash}
+		c.values = map[string]string{labelControllerRevision: a.revisionKey(cr)}
 		if i > 0 {
 			prev := revs[i-1]
 			c.diff = templateDiff(prev.Data.Spec.Template, cr.Data.Spec.Template, 0, 0)
@@ -207,32 +253,57 @@ func (a *analysis) revisionChanges() []change {
 
 // managedFieldChanges reads who last wrote the workload object, and when.
 func (a *analysis) managedFieldChanges() []change {
-	entries := append([]model.ManagedFieldsEntry(nil), a.work.Metadata.ManagedFields...)
+	type indexed struct {
+		model.ManagedFieldsEntry
+		index int // position in the object's own managedFields, which the evidence path names
+	}
+	var entries []indexed
+	for i, e := range a.work.Metadata.ManagedFields {
+		// A status write is the controller reporting on the workload, not a change to it.
+		if e.Subresource == "status" {
+			continue
+		}
+		entries = append(entries, indexed{ManagedFieldsEntry: e, index: i})
+	}
 	sort.Slice(entries, func(i, j int) bool {
 		if !entries[i].Time.Equal(entries[j].Time) {
 			return entries[i].Time.Before(entries[j].Time)
 		}
-		return entries[i].Manager < entries[j].Manager
+		if entries[i].Manager != entries[j].Manager {
+			return entries[i].Manager < entries[j].Manager
+		}
+		return entries[i].index < entries[j].index
 	})
+	object := fmt.Sprintf("%s %s/%s", strings.ToLower(a.work.Kind), a.work.Metadata.Namespace, a.work.Metadata.Name)
 	var out []change
-	for i, e := range entries {
+	seen := map[string]bool{}
+	for _, e := range entries {
 		if !a.inWindow(e.Time) {
 			continue
 		}
 		actor := classifyActor(e.Manager)
+		id := fmt.Sprintf("managedfields/%s#%s@%s", a.work.Metadata.Name, e.Manager, e.Time.UTC().Format(time.RFC3339))
+		if e.Subresource != "" {
+			id += "/" + e.Subresource
+		}
+		if seen[id] {
+			// Twin entries: the object's own index keeps every id unique, so the order holds.
+			id = fmt.Sprintf("%s[%d]", id, e.index)
+		}
+		seen[id] = true
 		c := change{
-			id:      fmt.Sprintf("managedfields/%s#%s@%s", a.work.Metadata.Name, e.Manager, e.Time.UTC().Format(time.RFC3339)),
+			id:      id,
 			at:      e.Time,
 			title:   fmt.Sprintf("field manager %s ran %s on %s", e.Manager, strings.ToLower(orUnknown(e.Operation)), a.workloadRef()),
 			onOwner: true,
 			actor:   actor,
 			evidence: []string{
-				fmt.Sprintf("%s %s/%s metadata.managedFields[%d].manager = %s",
-					strings.ToLower(a.work.Kind), a.work.Metadata.Namespace, a.work.Metadata.Name, i, e.Manager),
-				fmt.Sprintf("%s %s/%s metadata.managedFields[%d].time = %s",
-					strings.ToLower(a.work.Kind), a.work.Metadata.Namespace, a.work.Metadata.Name, i,
-					e.Time.UTC().Format(time.RFC3339)),
+				fmt.Sprintf("%s metadata.managedFields[%d].manager = %s", object, e.index, e.Manager),
+				fmt.Sprintf("%s metadata.managedFields[%d].time = %s", object, e.index, e.Time.UTC().Format(time.RFC3339)),
 			},
+		}
+		if e.Subresource != "" {
+			c.evidence = append(c.evidence, fmt.Sprintf("%s metadata.managedFields[%d].subresource = %s", object, e.index, e.Subresource))
 		}
 		c.attribution = a.attributionFor(actor, e.Manager, e.Time)
 		out = append(out, c)
@@ -472,11 +543,14 @@ func (a *analysis) argoRevisionAt(at time.Time) (app, revision string, ok bool) 
 	return app, revision, ok
 }
 
+// shortRevision keeps the first 12 characters of a revision, whole runes only, so a
+// non-ASCII revision never turns into invalid UTF-8.
 func shortRevision(rev string) string {
-	if len(rev) > 12 {
-		return rev[:12]
+	const keep = 12
+	if utf8.RuneCountInString(rev) <= keep {
+		return rev
 	}
-	return rev
+	return string([]rune(rev)[:keep])
 }
 
 func orUnknown(s string) string {
@@ -534,10 +608,12 @@ func (a *analysis) suspects(changes []change) []result.Suspect {
 
 func (a *analysis) verdict(c change) (result.Verdict, string) {
 	for _, d := range a.dims {
-		if d.Separation != result.Total || d.discriminator == "" {
+		if d.Separation != result.Total {
 			continue
 		}
-		if v, ok := c.values[d.Name]; ok && v == d.discriminator {
+		// In a total split every failing value is absent from the healthy side: a change
+		// that carries any of them created a failing-only attribute, not just the top one.
+		if v, ok := c.values[d.Name]; ok && d.failingValues[v] > 0 {
 			return result.Splits, d.Name
 		}
 	}
@@ -581,9 +657,10 @@ func (a *analysis) revisions() []result.Revision {
 	var entries []entry
 	if a.hashKey == labelPodTemplateHash {
 		for _, rs := range a.ownedReplicaSets() {
+			number, _ := revisionNumber(rs.Metadata)
 			entries = append(entries, entry{
 				name:     rs.Metadata.Name,
-				number:   revisionNumber(rs.Metadata),
+				number:   number,
 				created:  rs.Metadata.CreationTimestamp,
 				replicas: replicasOf(rs.Spec),
 				hash:     rs.Metadata.Labels[labelPodTemplateHash],
@@ -591,15 +668,11 @@ func (a *analysis) revisions() []result.Revision {
 		}
 	} else {
 		for _, cr := range a.ownedControllerRevisions() {
-			hash := cr.Metadata.Labels[labelControllerRevision]
-			if hash == "" {
-				hash = cr.Metadata.Name
-			}
 			entries = append(entries, entry{
 				name:    cr.Metadata.Name,
 				number:  cr.Revision,
 				created: cr.Metadata.CreationTimestamp,
-				hash:    hash,
+				hash:    a.revisionKey(cr),
 			})
 		}
 	}
@@ -632,22 +705,25 @@ func (a *analysis) revisions() []result.Revision {
 	if len(pick) < 2 {
 		a.gap("only one revision of %s is retained: the revision below it expired and cannot be compared",
 			a.workloadRef())
-	} else {
+	} else if total, _, _, _ := a.revisionPods(pick[0].hash); pick[0].hash != "" && total == 0 {
 		a.gap("revision %s has no pod left in the cluster: its health rests on retained events, not on its pods",
 			pick[0].name)
 	}
 	return out
 }
 
-func (a *analysis) revisionSignals(hash string, current bool) string {
+// revisionPods counts the selected pods that carry one revision hash, how many of them
+// fall in each cohort, and the container reasons they show, sorted.
+func (a *analysis) revisionPods(hash string) (total, failing, healthy int, reasons []string) {
 	if hash == "" {
-		return "no revision hash on this revision: its pods cannot be identified"
+		return 0, 0, 0, nil
 	}
-	failing, healthy, reasons := 0, 0, map[string]bool{}
+	seen := map[string]bool{}
 	for _, p := range a.selected {
 		if p.pod.Metadata.Labels[a.hashKey] != hash {
 			continue
 		}
+		total++
 		switch p.state {
 		case stateFailing:
 			failing++
@@ -656,14 +732,25 @@ func (a *analysis) revisionSignals(hash string, current bool) string {
 		}
 		for _, cs := range p.pod.Status.ContainerStatuses {
 			if cs.LastState.Terminated != nil && cs.LastState.Terminated.Reason != "" {
-				reasons[cs.LastState.Terminated.Reason] = true
+				seen[cs.LastState.Terminated.Reason] = true
 			}
 			if cs.State.Waiting != nil && cs.State.Waiting.Reason != "" {
-				reasons[cs.State.Waiting.Reason] = true
+				seen[cs.State.Waiting.Reason] = true
 			}
 		}
 	}
-	total := failing + healthy
+	for r := range seen {
+		reasons = append(reasons, r)
+	}
+	sort.Strings(reasons)
+	return total, failing, healthy, reasons
+}
+
+func (a *analysis) revisionSignals(hash string, current bool) string {
+	if hash == "" {
+		return "no revision hash on this revision: its pods cannot be identified"
+	}
+	total, failing, healthy, reasons := a.revisionPods(hash)
 	if total == 0 {
 		if current {
 			return "no pod retained for this revision"
@@ -672,12 +759,7 @@ func (a *analysis) revisionSignals(hash string, current bool) string {
 	}
 	line := fmt.Sprintf("%d pod(s), %d failing, %d healthy", total, failing, healthy)
 	if len(reasons) > 0 {
-		var list []string
-		for r := range reasons {
-			list = append(list, r)
-		}
-		sort.Strings(list)
-		line += " (" + strings.Join(list, ", ") + ")"
+		line += " (" + strings.Join(reasons, ", ") + ")"
 	}
 	return line
 }
@@ -735,12 +817,31 @@ func templateDiff(prev, cur model.PodTemplateSpec, prevReplicas, curReplicas int
 func resourceDiff(field string, prev, cur map[string]string) []string {
 	var out []string
 	for _, k := range unionKeys(prev, cur) {
-		if prev[k] == cur[k] {
+		if sameQuantity(k, prev[k], cur[k]) {
 			continue
 		}
 		out = append(out, fmt.Sprintf("%s.%s %s -> %s", field, k, orAbsent(prev[k]), orAbsent(cur[k])))
 	}
 	return out
+}
+
+// sameQuantity compares two resource quantities by value, so that 512Mi and 536870912, or
+// 0.5 and 500m, are never reported as a change. Values that do not parse compare as text.
+func sameQuantity(resource, a, b string) bool {
+	if a == b {
+		return true
+	}
+	if a == "" || b == "" {
+		return false
+	}
+	if resource == "cpu" {
+		x, okX := model.ParseCPU(a)
+		y, okY := model.ParseCPU(b)
+		return okX && okY && x == y
+	}
+	x, okX := model.ParseMemory(a)
+	y, okY := model.ParseMemory(b)
+	return okX && okY && x == y
 }
 
 func unionKeys[T any](a, b map[string]T) []string {

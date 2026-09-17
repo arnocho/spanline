@@ -8,7 +8,9 @@ import (
 	"fmt"
 	"io/fs"
 	"os"
+	"path"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/arnocho/spanline/internal/fixtures"
@@ -51,32 +53,44 @@ func decodeInto(raw []byte, target any) error {
 	return json.Unmarshal(items, target)
 }
 
+// decodeList decodes into a fresh slice and only then stores it, so a list that fails to decode
+// leaves the snapshot untouched: encoding/json fills a slice as best it can before reporting a
+// type error, and half a list next to a gap would read as coverage.
+func decodeList[T any](raw []byte, dst *[]T) error {
+	var items []T
+	if err := decodeInto(raw, &items); err != nil {
+		return err
+	}
+	*dst = items
+	return nil
+}
+
 func assign(snap *model.Snapshot, resource string, raw []byte) error {
 	switch resource {
 	case "nodes":
-		return decodeInto(raw, &snap.Nodes)
+		return decodeList(raw, &snap.Nodes)
 	case "pods":
-		return decodeInto(raw, &snap.Pods)
+		return decodeList(raw, &snap.Pods)
 	case "replicasets":
-		return decodeInto(raw, &snap.ReplicaSets)
+		return decodeList(raw, &snap.ReplicaSets)
 	case "controllerrevisions":
-		return decodeInto(raw, &snap.ControllerRevisions)
+		return decodeList(raw, &snap.ControllerRevisions)
 	case "deployments":
-		return decodeInto(raw, &snap.Deployments)
+		return decodeList(raw, &snap.Deployments)
 	case "statefulsets":
-		return decodeInto(raw, &snap.StatefulSets)
+		return decodeList(raw, &snap.StatefulSets)
 	case "daemonsets":
-		return decodeInto(raw, &snap.DaemonSets)
+		return decodeList(raw, &snap.DaemonSets)
 	case "events":
-		return decodeInto(raw, &snap.Events)
+		return decodeList(raw, &snap.Events)
 	case "pdbs":
-		return decodeInto(raw, &snap.PDBs)
+		return decodeList(raw, &snap.PDBs)
 	case "pvcs":
-		return decodeInto(raw, &snap.PVCs)
+		return decodeList(raw, &snap.PVCs)
 	case "pvs":
-		return decodeInto(raw, &snap.PVs)
+		return decodeList(raw, &snap.PVs)
 	case "argoapps":
-		return decodeInto(raw, &snap.ArgoApps)
+		return decodeList(raw, &snap.ArgoApps)
 	}
 	return fmt.Errorf("unknown resource %q", resource)
 }
@@ -132,6 +146,15 @@ func newFixtureSource(root fs.FS, scenario string, meta fixtures.Meta) (*Fixture
 	if err != nil {
 		return nil, fmt.Errorf("scenario %q has an unreadable now field: %w", scenario, err)
 	}
+	if len(meta.Contexts) == 0 {
+		return nil, fmt.Errorf("scenario %q lists no context in its meta.json", scenario)
+	}
+	for _, c := range meta.Contexts {
+		// A context is a directory of the scenario: it must stay inside it.
+		if c == "" || c == "." || !fs.ValidPath(c) {
+			return nil, fmt.Errorf("scenario %q lists context %q, which is not a directory name inside the scenario", scenario, c)
+		}
+	}
 	return &FixtureSource{root: root, scenario: scenario, meta: meta, now: now}, nil
 }
 
@@ -150,13 +173,20 @@ func (f *FixtureSource) Extra(rel string) ([]byte, error) {
 	return fs.ReadFile(f.root, rel)
 }
 
+// Snapshot replays one recorded context. The context must be one the scenario lists: the name
+// is used as a directory, and only a listed name is read, so a name with path elements in it
+// can never reach a sibling context or anything else in the scenario.
 func (f *FixtureSource) Snapshot(_ context.Context, kubeContext, namespace string) (*model.Snapshot, error) {
-	if kubeContext == "" && len(f.meta.Contexts) > 0 {
+	if kubeContext == "" {
 		kubeContext = f.meta.Contexts[0]
+	}
+	if !contains(f.meta.Contexts, kubeContext) {
+		return nil, fmt.Errorf("scenario %s records no context %q, recorded: %s",
+			f.scenario, kubeContext, strings.Join(f.meta.Contexts, ", "))
 	}
 	snap := &model.Snapshot{Context: kubeContext, CollectedAt: f.now, Namespace: namespace}
 	for _, r := range resources {
-		raw, err := fs.ReadFile(f.root, filepath.Join(kubeContext, r+".json"))
+		raw, err := fs.ReadFile(f.root, path.Join(kubeContext, r+".json"))
 		if err != nil {
 			snap.Gaps = append(snap.Gaps, model.CoverageGap{Resource: r, Reason: "not recorded in this scenario"})
 			continue

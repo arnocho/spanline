@@ -27,24 +27,26 @@ func collectRisks(indexes []*index, pools map[poolKey]*pool, states []*tfplan.St
 	return out, atRisk
 }
 
-// desiredCount reads how many instances are wanted, and names the field it read.
-// A DaemonSet counts nodes, not replicas, so it is read from its own status fields.
+// desiredCount reads how many instances are wanted, and returns the evidence line naming
+// the field it read. A DaemonSet counts nodes, not replicas, so it is read from its own
+// status field. A Deployment or StatefulSet with spec.replicas unset wants 1, the default
+// the API server applies; status.replicas is what exists, not what is wanted.
 func desiredCount(w model.Workload) (int, string) {
 	if w.Kind == "DaemonSet" {
-		return w.Status.DesiredNumberScheduled, "status.desiredNumberScheduled"
+		return w.Status.DesiredNumberScheduled, fmt.Sprintf("status.desiredNumberScheduled=%d", w.Status.DesiredNumberScheduled)
 	}
 	if w.Spec.Replicas != nil {
-		return *w.Spec.Replicas, "spec.replicas"
+		return *w.Spec.Replicas, fmt.Sprintf("spec.replicas=%d", *w.Spec.Replicas)
 	}
-	return w.Status.Replicas, "status.replicas"
+	return 1, "spec.replicas=1 (unset, which Kubernetes defaults to 1)"
 }
 
-// readyCount reads how many instances are ready, and names the field it read.
+// readyCount reads how many instances are ready, and returns the evidence line for it.
 func readyCount(w model.Workload) (int, string) {
 	if w.Kind == "DaemonSet" {
-		return w.Status.NumberReady, "status.numberReady"
+		return w.Status.NumberReady, fmt.Sprintf("status.numberReady=%d", w.Status.NumberReady)
 	}
-	return w.Status.ReadyReplicas, "status.readyReplicas"
+	return w.Status.ReadyReplicas, fmt.Sprintf("status.readyReplicas=%d", w.Status.ReadyReplicas)
 }
 
 // workloadRisks reports a workload that serves nothing, then a workload one node loss ends.
@@ -53,15 +55,12 @@ func workloadRisks(ix *index, atRisk map[workloadKey]bool) []result.Finding {
 	var out []result.Finding
 	for _, w := range ix.workloads {
 		key := keyOf(ix.snap.Context, w)
-		desired, desiredField := desiredCount(w)
-		ready, readyField := readyCount(w)
+		desired, desiredLine := desiredCount(w)
+		ready, readyLine := readyCount(w)
 		switch {
 		case desired > 0 && ready == 0:
 			atRisk[key] = true
-			evidence := []string{
-				fmt.Sprintf("%s=%d", desiredField, desired),
-				fmt.Sprintf("%s=%d", readyField, ready),
-			}
+			evidence := []string{desiredLine, readyLine}
 			if w.Kind != "DaemonSet" {
 				evidence = append(evidence, fmt.Sprintf("status.availableReplicas=%d", w.Status.AvailableReplicas))
 			}
@@ -70,7 +69,8 @@ func workloadRisks(ix *index, atRisk map[workloadKey]bool) []result.Finding {
 				Kind:     w.Kind,
 				Object:   key.object(),
 				Context:  ix.snap.Context,
-				Reason:   fmt.Sprintf("nothing is ready while %d is wanted, so this workload serves no traffic at all", desired),
+				Reason: fmt.Sprintf("nothing is ready while %d %s wanted, so this workload serves no traffic at all",
+					desired, plural(desired, "is", "are")),
 				Evidence: evidence,
 			})
 		case desired == 1 && w.Kind != "DaemonSet":
@@ -81,10 +81,7 @@ func workloadRisks(ix *index, atRisk map[workloadKey]bool) []result.Finding {
 				Object:   key.object(),
 				Context:  ix.snap.Context,
 				Reason:   "one replica only, so the loss of its node takes this workload down",
-				Evidence: []string{
-					fmt.Sprintf("%s=%d", desiredField, desired),
-					fmt.Sprintf("%s=%d", readyField, ready),
-				},
+				Evidence: []string{desiredLine, readyLine},
 			})
 		}
 	}
@@ -92,7 +89,8 @@ func workloadRisks(ix *index, atRisk map[workloadKey]bool) []result.Finding {
 }
 
 // pdbRisks reports a budget that allows no disruption at all, which blocks every drain of
-// a node running the pods it selects.
+// a node running the pods it selects. A budget that selects no pod blocks nothing: its zero
+// is reported as information, never as a risk.
 func pdbRisks(ix *index, atRisk map[workloadKey]bool) []result.Finding {
 	var out []result.Finding
 	pdbs := append([]model.PodDisruptionBudget(nil), ix.snap.PDBs...)
@@ -118,6 +116,20 @@ func pdbRisks(ix *index, atRisk map[workloadKey]bool) []result.Finding {
 		if pdb.Spec.MaxUnavailable != "" {
 			evidence = append(evidence, "spec.maxUnavailable="+pdb.Spec.MaxUnavailable)
 		}
+		if pdb.Spec.Selector.Empty() {
+			evidence = append(evidence, "spec.selector is empty, which policy/v1 reads as every pod in the namespace")
+		}
+		if pdb.Status.ExpectedPods == 0 && ix.livePodsSelectedBy(pdb.Metadata.Namespace, pdb.Spec.Selector) == 0 {
+			out = append(out, result.Finding{
+				Severity: result.Info,
+				Kind:     "PodDisruptionBudget",
+				Object:   nsName(pdb.Metadata.Namespace, pdb.Metadata.Name),
+				Context:  ix.snap.Context,
+				Reason:   "this budget covers no pod right now, so it blocks no drain",
+				Evidence: append(evidence, "no live pod in namespace "+pdb.Metadata.Namespace+" matches spec.selector"),
+			})
+			continue
+		}
 		selected := ix.workloadsSelectedBy(pdb.Metadata.Namespace, pdb.Spec.Selector)
 		for _, k := range selected {
 			atRisk[k] = true
@@ -138,9 +150,11 @@ func pdbRisks(ix *index, atRisk map[workloadKey]bool) []result.Finding {
 	return out
 }
 
-// volumeRisks reports a bound claim whose volume is pinned to a single zone, so the pod
-// using it cannot be rescheduled anywhere else. A claim whose volume was not read is not
-// a pass: it is reported as not assessed.
+// volumeRisks reports a bound claim whose volume is pinned to a single node or a single
+// zone, so the pod using it cannot be rescheduled anywhere else, and a claim that is not
+// bound while a live pod mounts it, since that pod has no volume to start with. A claim
+// whose volume was not read is not a pass: it is reported as not assessed. A claim that is
+// not bound and that nothing mounts is left alone: with WaitForFirstConsumer that is normal.
 func volumeRisks(ix *index, atRisk map[workloadKey]bool) []result.Finding {
 	var out []result.Finding
 	pvcs := append([]model.PersistentVolumeClaim(nil), ix.snap.PVCs...)
@@ -151,10 +165,35 @@ func volumeRisks(ix *index, atRisk map[workloadKey]bool) []result.Finding {
 		return pvcs[i].Metadata.Name < pvcs[j].Metadata.Name
 	})
 	for _, pvc := range pvcs {
-		if pvc.Status.Phase != "Bound" || pvc.Spec.VolumeName == "" {
+		object := nsName(pvc.Metadata.Namespace, pvc.Metadata.Name)
+		mounts := ix.pvcPods[object]
+		if pvc.Status.Phase != "Bound" {
+			if len(mounts) == 0 {
+				continue
+			}
+			phase := pvc.Status.Phase
+			if phase == "" {
+				phase = "unset"
+			}
+			evidence := []string{"status.phase=" + phase}
+			if pvc.Spec.VolumeName != "" {
+				evidence = append(evidence, "spec.volumeName="+pvc.Spec.VolumeName)
+			} else {
+				evidence = append(evidence, "spec.volumeName is empty")
+			}
+			out = append(out, result.Finding{
+				Severity: result.Risk,
+				Kind:     "PersistentVolumeClaim",
+				Object:   object,
+				Context:  ix.snap.Context,
+				Reason:   fmt.Sprintf("this claim is %s, not Bound, so the pod mounting it has no volume to start with", phase),
+				Evidence: append(evidence, ix.mountLines(mounts, atRisk)...),
+			})
 			continue
 		}
-		object := nsName(pvc.Metadata.Namespace, pvc.Metadata.Name)
+		if pvc.Spec.VolumeName == "" {
+			continue
+		}
 		pv, ok := ix.pvByName[pvc.Spec.VolumeName]
 		if !ok {
 			out = append(out, result.Finding{
@@ -162,7 +201,7 @@ func volumeRisks(ix *index, atRisk map[workloadKey]bool) []result.Finding {
 				Kind:     "PersistentVolumeClaim",
 				Object:   object,
 				Context:  ix.snap.Context,
-				Reason:   "the volume this claim is bound to was not read, so whether it pins the pod to one zone is unknown",
+				Reason:   "the volume this claim is bound to was not read, so whether it pins the pod to one node or one zone is unknown",
 				Evidence: []string{
 					"spec.volumeName=" + pvc.Spec.VolumeName,
 					"status.phase=" + pvc.Status.Phase,
@@ -171,53 +210,84 @@ func volumeRisks(ix *index, atRisk map[workloadKey]bool) []result.Finding {
 			})
 			continue
 		}
-		zones := pinnedZones(pv)
-		if len(zones) != 1 {
+		pin := pinnedTo(pv)
+		if pin.key == "" {
 			continue
 		}
 		evidence := []string{
 			"spec.volumeName=" + pvc.Spec.VolumeName,
 			"status.phase=" + pvc.Status.Phase,
-			fmt.Sprintf("persistentvolume %s spec.nodeAffinity requires %s in [%s]", pv.Metadata.Name, zoneLabel, strings.Join(zones, " ")),
+			fmt.Sprintf("persistentvolume %s spec.nodeAffinity requires %s in [%s]", pv.Metadata.Name, pin.key, pin.value),
 		}
-		for _, pod := range ix.pvcPods[object] {
-			if k, ok := ix.podWorkload[nsName(pod.Metadata.Namespace, pod.Metadata.Name)]; ok {
-				atRisk[k] = true
-				evidence = append(evidence, "mounted by pod "+nsName(pod.Metadata.Namespace, pod.Metadata.Name)+" of "+k.kind+" "+k.object())
-			}
+		reason := "its volume lives in one zone only, so the pod using it cannot move out of zone " + pin.value
+		if pin.key == hostnameLabel {
+			reason = "its volume lives on one node only, so the pod using it cannot move off node " + pin.value
 		}
 		out = append(out, result.Finding{
 			Severity: result.Risk,
 			Kind:     "PersistentVolumeClaim",
 			Object:   object,
 			Context:  ix.snap.Context,
-			Reason:   "its volume lives in one zone only, so the pod using it cannot move out of zone " + zones[0],
-			Evidence: evidence,
+			Reason:   reason,
+			Evidence: append(evidence, ix.mountLines(mounts, atRisk)...),
 		})
 	}
 	return out
 }
 
-// pinnedZones lists the zones a volume's node affinity allows, sorted.
-func pinnedZones(pv model.PersistentVolume) []string {
-	if pv.Spec.NodeAffinity == nil || pv.Spec.NodeAffinity.Required == nil {
-		return nil
+// mountLines names the live pods mounting a claim, marks their workloads at risk, and says
+// when a pod has no workload read behind it.
+func (ix *index) mountLines(mounts []model.Pod, atRisk map[workloadKey]bool) []string {
+	var lines []string
+	for _, pod := range mounts {
+		name := nsName(pod.Metadata.Namespace, pod.Metadata.Name)
+		if k, ok := ix.podWorkload[name]; ok {
+			atRisk[k] = true
+			lines = append(lines, "mounted by pod "+name+" of "+k.kind+" "+k.object())
+		} else {
+			lines = append(lines, "mounted by pod "+name+", which no workload read owns")
+		}
 	}
-	set := map[string]bool{}
+	return lines
+}
+
+// volumePin is the one node or one zone a volume's required node affinity allows.
+type volumePin struct {
+	key   string
+	value string
+}
+
+// pinKeys are the affinity keys spanline reads as a pin, tightest first: a hostname pin
+// beats a zone pin, and the current zone key is preferred to the legacy one.
+var pinKeys = []string{hostnameLabel, zoneLabel, legacyZoneLabel}
+
+// pinnedTo reads whether a volume's required node affinity allows exactly one node, or
+// failing that exactly one zone, and returns the key as it was read. Any other affinity is
+// not a pin spanline understands, so nothing is reported for it.
+func pinnedTo(pv model.PersistentVolume) volumePin {
+	if pv.Spec.NodeAffinity == nil || pv.Spec.NodeAffinity.Required == nil {
+		return volumePin{}
+	}
+	byKey := map[string]map[string]bool{}
 	for _, term := range pv.Spec.NodeAffinity.Required.NodeSelectorTerms {
 		for _, expr := range term.MatchExpressions {
-			if expr.Key != zoneLabel && expr.Key != legacyZoneLabel {
-				continue
-			}
 			if expr.Operator != "" && expr.Operator != "In" {
 				continue
 			}
+			if byKey[expr.Key] == nil {
+				byKey[expr.Key] = map[string]bool{}
+			}
 			for _, v := range expr.Values {
-				set[v] = true
+				byKey[expr.Key][v] = true
 			}
 		}
 	}
-	return sortedKeys(set)
+	for _, key := range pinKeys {
+		if values := sortedKeys(byKey[key]); len(values) == 1 {
+			return volumePin{key: key, value: values[0]}
+		}
+	}
+	return volumePin{}
 }
 
 // nodeReady reports the Ready condition, and the exact field it read. A node with no Ready
@@ -245,7 +315,13 @@ func nodeRisks(ix *index) []result.Finding {
 		if n.Spec.Unschedulable {
 			lines = append(lines, "spec.unschedulable=true")
 		}
-		lines = append(lines, fmt.Sprintf("%d pod(s) scheduled on it", len(ix.snap.PodsOnNode(n.Metadata.Name))))
+		live := 0
+		for _, p := range ix.snap.PodsOnNode(n.Metadata.Name) {
+			if podLive(p) {
+				live++
+			}
+		}
+		lines = append(lines, fmt.Sprintf("%d live pod(s) scheduled on it", live))
 		out = append(out, result.Finding{
 			Severity: result.Risk,
 			Kind:     "Node",
@@ -301,32 +377,62 @@ func poolRisks(pools map[poolKey]*pool, states []*tfplan.State) []result.Finding
 			})
 		}
 		if len(states) > 0 && p.owner == nil {
+			reason := "no state read declares a node pool of this name, so who owns these nodes was not assessed"
+			evidence := []string{p.label}
+			if len(p.rivals) > 0 {
+				reason = "state resources declare a node pool of this name, but none can be tied to cluster " +
+					p.key.context + " without guessing, so who owns these nodes was not assessed"
+				for _, c := range p.rivals {
+					evidence = append(evidence, rivalLine(c))
+				}
+			}
+			evidence = append(evidence, fmt.Sprintf("%d node pool(s) declared across %d state file(s) read", declared, len(states)))
 			out = append(out, result.Finding{
 				Severity: result.NotAssessed,
 				Kind:     "NodePool",
 				Object:   p.key.name,
 				Context:  p.key.context,
-				Reason:   "no state read declares a node pool of this name, so who owns these nodes was not assessed",
-				Evidence: []string{
-					p.label,
-					fmt.Sprintf("%d node pool(s) declared across %d state file(s) read", declared, len(states)),
-				},
+				Reason:   reason,
+				Evidence: evidence,
 			})
 		}
 	}
 	return out
 }
 
+// rivalLine describes one state resource that declares a contested pool name, and why it
+// was not handed to the pool: it already owns another pool, or its state names a cluster.
+func rivalLine(c *ownerCandidate) string {
+	line := c.owner.Address
+	if c.owner.StateFile != "" {
+		line += " in " + c.owner.StateFile
+	}
+	if c.matched {
+		line += ", already matched to pool " + c.claimedBy.context + "/" + c.claimedBy.name
+	}
+	if len(c.clusters) == 0 {
+		return line + ", its state names no cluster"
+	}
+	names := sortedKeys(c.clusters)
+	return line + ", its state names " + plural(len(names), "cluster ", "clusters ") + strings.Join(names, ", ")
+}
+
 // helmFindings reports the Helm releases Terraform owns, mapped to the live workloads that
-// carry the release annotation. It is information, never a verdict.
+// carry the release annotation: one finding per cluster where the release is found, so a
+// release installed in several clusters never lists them all under the first context. A
+// release found nowhere is reported once, with no context. It is information, never a verdict.
 func helmFindings(indexes []*index, states []*tfplan.State) []result.Finding {
 	var out []result.Finding
 	for _, st := range states {
 		for _, rel := range st.HelmReleases() {
 			namespace, name := splitRelease(rel.Name)
-			context := ""
-			var live []string
+			base := []string{
+				"state resource " + rel.Address,
+				fmt.Sprintf("attributes name=%s namespace=%s", name, namespace),
+			}
+			found := false
 			for _, ix := range indexes {
+				var live []string
 				for _, w := range ix.workloads {
 					if w.Metadata.Annotations[helmNameAnn] != name {
 						continue
@@ -334,31 +440,32 @@ func helmFindings(indexes []*index, states []*tfplan.State) []result.Finding {
 					if ns := w.Metadata.Annotations[helmNamespaceAnn]; ns != "" && ns != namespace {
 						continue
 					}
-					if context == "" {
-						context = ix.snap.Context
-					}
 					live = append(live, w.Kind+" "+nsName(w.Metadata.Namespace, w.Metadata.Name))
 				}
+				if len(live) == 0 {
+					continue
+				}
+				found = true
+				evidence := append(append([]string(nil), base...),
+					"matched on metadata.annotations "+helmNameAnn+"="+name+": "+strings.Join(live, ", "))
+				out = append(out, result.Finding{
+					Severity: result.Info,
+					Kind:     "HelmRelease",
+					Object:   rel.Name,
+					Context:  ix.snap.Context,
+					Reason:   "Terraform owns this Helm release, live as " + strings.Join(live, ", "),
+					Evidence: evidence,
+				})
 			}
-			evidence := []string{
-				"state resource " + rel.Address,
-				fmt.Sprintf("attributes name=%s namespace=%s", name, namespace),
+			if !found {
+				out = append(out, result.Finding{
+					Severity: result.Info,
+					Kind:     "HelmRelease",
+					Object:   rel.Name,
+					Reason:   "Terraform owns this Helm release, and no workload read carries the matching release annotation",
+					Evidence: append(base, "no workload carries metadata.annotations "+helmNameAnn+"="+name),
+				})
 			}
-			reason := "Terraform owns this Helm release, and no workload read carries the matching release annotation"
-			if len(live) > 0 {
-				reason = "Terraform owns this Helm release, live as " + strings.Join(live, ", ")
-				evidence = append(evidence, "matched on metadata.annotations "+helmNameAnn+"="+name+": "+strings.Join(live, ", "))
-			} else {
-				evidence = append(evidence, "no workload carries metadata.annotations "+helmNameAnn+"="+name)
-			}
-			out = append(out, result.Finding{
-				Severity: result.Info,
-				Kind:     "HelmRelease",
-				Object:   rel.Name,
-				Context:  context,
-				Reason:   reason,
-				Evidence: evidence,
-			})
 		}
 	}
 	return out

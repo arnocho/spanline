@@ -119,8 +119,9 @@ func TestNameIsStablePerRun(t *testing.T) {
 
 	// A second run is free to number differently, but must stay internally stable.
 	q := NewPseudonymizer("run-salt")
-	if q.Name("namespace", "prod-payments") != q.Name("namespace", "prod-payments") {
-		t.Fatal("a fresh pseudonymizer is not stable within its own run")
+	got := q.Name("namespace", "prod-payments")
+	if again := q.Name("namespace", "prod-payments"); again != got {
+		t.Fatalf("a fresh pseudonymizer is not stable within its own run: %q then %q", got, again)
 	}
 }
 

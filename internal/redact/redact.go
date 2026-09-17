@@ -8,7 +8,6 @@ import (
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/hex"
-	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -18,13 +17,19 @@ import (
 // a false positive costs one unreadable value, a false negative costs a leak.
 var secretish = []string{
 	"password",
+	"passwd",
+	"passphrase",
+	"pwd",
 	"token",
 	"secret",
 	"key",
 	"connection",
 	"credential",
-	"passwd",
-	"apikey",
+	"authorization",
+	"bearer",
+	"cert",
+	"private",
+	"cookie",
 }
 
 // IsSecretish reports whether a key name says its value must never be shown.
@@ -42,7 +47,8 @@ func IsSecretish(key string) bool {
 // Value returns a short salted fingerprint of v, in the form "sha256:" plus twelve hex
 // characters of HMAC-SHA256(salt, v). Two runs with the same salt agree on whether a value
 // changed, and neither run discloses the value itself. The fingerprint is one way: nothing
-// here can turn it back into v.
+// here can turn it back into v. Twelve characters are enough to compare, and never used as
+// a lookup key, because two values can share them.
 func Value(salt, v string) string {
 	mac := hmac.New(sha256.New, []byte(salt))
 	mac.Write([]byte(v))
@@ -104,13 +110,14 @@ func prefixFor(kind string) string {
 
 // Pseudonymizer hands out stable placeholders for the names that must not leave the machine:
 // namespaces, workloads, nodes, images. The mapping lives for one run only, in memory, and is
-// keyed by the salted fingerprint of the real name, so the index itself holds no plain lookup
-// key. It is safe for concurrent use.
+// keyed by the kind and the real name itself, so two names can never share a placeholder: a
+// truncated fingerprint would let them, and the reverse table holds the real names anyway.
+// It is safe for concurrent use.
 type Pseudonymizer struct {
 	salt  string
 	mu    sync.Mutex
 	next  int
-	byKey map[string]string // kind plus fingerprint -> placeholder
+	byKey map[string]string // kind plus real name -> placeholder
 	table map[string]string // placeholder -> real name
 }
 
@@ -131,7 +138,7 @@ func (p *Pseudonymizer) Name(kind, real string) string {
 		return ""
 	}
 	prefix := prefixFor(kind)
-	key := prefix + "\x00" + Value(p.salt, real)
+	key := prefix + "\x00" + real
 
 	p.mu.Lock()
 	defer p.mu.Unlock()
@@ -146,30 +153,46 @@ func (p *Pseudonymizer) Name(kind, real string) string {
 }
 
 // Rehydrate maps every placeholder in text back to its real name, so an operator reads the
-// answer in the terms of their own estate. Longer placeholders are replaced first, so ns-10
-// is never mistaken for ns-1.
+// answer in the terms of their own estate. A placeholder is only replaced when it stands as a
+// whole token, so ns-1 is never touched inside ns-10, ns-1a or dns-1.
 func (p *Pseudonymizer) Rehydrate(text string) string {
-	p.mu.Lock()
-	placeholders := make([]string, 0, len(p.table))
-	for ph := range p.table {
-		placeholders = append(placeholders, ph)
-	}
-	sort.Slice(placeholders, func(i, j int) bool {
-		if len(placeholders[i]) != len(placeholders[j]) {
-			return len(placeholders[i]) > len(placeholders[j])
-		}
-		return placeholders[i] < placeholders[j]
-	})
-	pairs := make([]string, 0, len(placeholders)*2)
-	for _, ph := range placeholders {
-		pairs = append(pairs, ph, p.table[ph])
-	}
-	p.mu.Unlock()
-
-	if len(pairs) == 0 {
+	table := p.Table()
+	if len(table) == 0 {
 		return text
 	}
-	return strings.NewReplacer(pairs...).Replace(text)
+	var b strings.Builder
+	b.Grow(len(text))
+	for i := 0; i < len(text); {
+		if !isTokenByte(text[i]) {
+			b.WriteByte(text[i])
+			i++
+			continue
+		}
+		j := i
+		for j < len(text) && isTokenByte(text[j]) {
+			j++
+		}
+		tok := text[i:j]
+		if real, ok := table[tok]; ok {
+			b.WriteString(real)
+		} else {
+			b.WriteString(tok)
+		}
+		i = j
+	}
+	return b.String()
+}
+
+// isTokenByte says which bytes glue a placeholder to its neighbours: letters, digits, the
+// underscore and the hyphen, so that a longer identifier never contains a placeholder.
+func isTokenByte(c byte) bool {
+	switch {
+	case c >= 'a' && c <= 'z', c >= 'A' && c <= 'Z', c >= '0' && c <= '9':
+		return true
+	case c == '_', c == '-':
+		return true
+	}
+	return false
 }
 
 // Table returns a copy of the placeholder to real name mapping, for --show-prompt and for an

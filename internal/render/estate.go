@@ -73,6 +73,7 @@ func EstateText(r *result.EstateReport, o Options) string {
 		b.WriteString(indent1 + "no report to render\n")
 		return out(&b)
 	}
+	r = scrub(r, true).(*result.EstateReport)
 
 	br := brief.Estate(r)
 	briefHead(&b, p, o, "spanline estate"+gutter+br.Sub, br)
@@ -182,6 +183,7 @@ func EstateMarkdown(r *result.EstateReport) string {
 		b.WriteString("# spanline estate\n\nNo report to render.\n")
 		return out(&b)
 	}
+	r = scrub(r, true).(*result.EstateReport)
 
 	b.WriteString("# spanline estate\n")
 	mdBrief(&b, brief.Estate(r))
@@ -240,9 +242,9 @@ func EstateMarkdown(r *result.EstateReport) string {
 			mdHeading(&b, 3, string(g.severity)+" ("+itoa(len(g.findings))+")")
 			rows := make([][]string, 0, len(g.findings))
 			for _, f := range g.findings {
-				rows = append(rows, []string{f.Kind, f.Object, f.Reason, strings.Join(f.Evidence, "; ")})
+				rows = append(rows, []string{f.Kind, f.Object, f.Reason, strings.Join(f.Evidence, "; "), f.Context})
 			}
-			mdTable(&b, []string{"kind", "object", "reason", "evidence"}, rows)
+			mdTable(&b, []string{"kind", "object", "reason", "evidence", "context"}, rows)
 		}
 	}
 

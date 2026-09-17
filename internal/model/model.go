@@ -2,7 +2,10 @@
 // Only the fields the analyses need are kept: everything else is ignored on decode.
 package model
 
-import "time"
+import (
+	"encoding/json"
+	"time"
+)
 
 type OwnerReference struct {
 	Kind string `json:"kind"`
@@ -28,8 +31,39 @@ type ObjectMeta struct {
 	ManagedFields     []ManagedFieldsEntry `json:"managedFields,omitempty"`
 }
 
+// LabelSelector is a Kubernetes label selector. Both halves are read: matchLabels through
+// the exported field, matchExpressions into an unexported one, so a selector is never judged
+// on half of what it says while the decoded field set stays as it was.
 type LabelSelector struct {
-	MatchLabels map[string]string `json:"matchLabels,omitempty"`
+	MatchLabels      map[string]string `json:"matchLabels,omitempty"`
+	matchExpressions []labelSelectorRequirement
+}
+
+// labelSelectorRequirement is one matchExpressions entry.
+type labelSelectorRequirement struct {
+	Key      string   `json:"key"`
+	Operator string   `json:"operator"`
+	Values   []string `json:"values,omitempty"`
+}
+
+// UnmarshalJSON reads matchLabels and matchExpressions together.
+func (s *LabelSelector) UnmarshalJSON(b []byte) error {
+	var raw struct {
+		MatchLabels      map[string]string          `json:"matchLabels"`
+		MatchExpressions []labelSelectorRequirement `json:"matchExpressions"`
+	}
+	if err := json.Unmarshal(b, &raw); err != nil {
+		return err
+	}
+	s.MatchLabels = raw.MatchLabels
+	s.matchExpressions = raw.MatchExpressions
+	return nil
+}
+
+// Empty reports a selector with neither matchLabels nor matchExpressions, which Kubernetes
+// reads as selecting everything. A nil selector is not empty: it selects nothing.
+func (s *LabelSelector) Empty() bool {
+	return s != nil && len(s.MatchLabels) == 0 && len(s.matchExpressions) == 0
 }
 
 type ResourceRequirements struct {
@@ -219,6 +253,40 @@ type PDBSpec struct {
 	MaxUnavailable string         `json:"maxUnavailable,omitempty"`
 }
 
+// UnmarshalJSON accepts the IntOrString form Kubernetes serialises: a bare number, or a string
+// such as "100%". Without it, a budget written as minAvailable: 1, which is the common form,
+// would fail the decode of the whole list and every budget would vanish from the snapshot.
+func (p *PDBSpec) UnmarshalJSON(b []byte) error {
+	var aux struct {
+		Selector       *LabelSelector  `json:"selector,omitempty"`
+		MinAvailable   json.RawMessage `json:"minAvailable,omitempty"`
+		MaxUnavailable json.RawMessage `json:"maxUnavailable,omitempty"`
+	}
+	if err := json.Unmarshal(b, &aux); err != nil {
+		return err
+	}
+	p.Selector = aux.Selector
+	p.MinAvailable = intOrString(aux.MinAvailable)
+	p.MaxUnavailable = intOrString(aux.MaxUnavailable)
+	return nil
+}
+
+// intOrString renders a Kubernetes IntOrString as the text an operator would read.
+func intOrString(raw json.RawMessage) string {
+	if len(raw) == 0 || string(raw) == "null" {
+		return ""
+	}
+	var s string
+	if err := json.Unmarshal(raw, &s); err == nil {
+		return s
+	}
+	var n json.Number
+	if err := json.Unmarshal(raw, &n); err == nil {
+		return n.String()
+	}
+	return string(raw)
+}
+
 type PDBStatus struct {
 	DisruptionsAllowed int `json:"disruptionsAllowed"`
 	CurrentHealthy     int `json:"currentHealthy"`
@@ -392,15 +460,48 @@ func (s *Snapshot) PodsOnNode(node string) []Pod {
 	return out
 }
 
-// SelectorMatches reports whether labels satisfy every matchLabels entry.
+// SelectorMatches reports whether labels satisfy the selector, with the meaning Kubernetes
+// documents: a nil selector matches nothing, an empty one matches everything, and every
+// matchLabels entry and matchExpressions requirement must hold. A matchLabels entry needs
+// its key present, even with an empty value. A requirement whose operator spanline does not
+// know is never claimed as a match.
 func SelectorMatches(sel *LabelSelector, labels map[string]string) bool {
-	if sel == nil || len(sel.MatchLabels) == 0 {
+	if sel == nil {
 		return false
 	}
 	for k, v := range sel.MatchLabels {
-		if labels[k] != v {
+		if got, ok := labels[k]; !ok || got != v {
+			return false
+		}
+	}
+	for _, r := range sel.matchExpressions {
+		if !r.matches(labels) {
 			return false
 		}
 	}
 	return true
+}
+
+func (r labelSelectorRequirement) matches(labels map[string]string) bool {
+	v, present := labels[r.Key]
+	switch r.Operator {
+	case "In":
+		return present && containsString(r.Values, v)
+	case "NotIn":
+		return !present || !containsString(r.Values, v)
+	case "Exists":
+		return present
+	case "DoesNotExist":
+		return !present
+	}
+	return false
+}
+
+func containsString(list []string, s string) bool {
+	for _, v := range list {
+		if v == s {
+			return true
+		}
+	}
+	return false
 }

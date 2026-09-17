@@ -5,15 +5,20 @@ import (
 	"fmt"
 	"os"
 	"sort"
+	"strconv"
 )
 
-// StateInstance is one instance of a resource in a state file.
+// StateInstance is one instance of a resource in a state file. IndexKey is the count index
+// (a number) or the for_each key (a string) of the instance, absent on a single instance.
 type StateInstance struct {
+	IndexKey   any            `json:"index_key,omitempty"`
 	Attributes map[string]any `json:"attributes"`
 }
 
-// StateResource is one resource block of a state file.
+// StateResource is one resource block of a state file. Module is the module path the block
+// lives in, such as module.aks, empty at the root.
 type StateResource struct {
+	Module    string          `json:"module,omitempty"`
 	Mode      string          `json:"mode"`
 	Type      string          `json:"type"`
 	Name      string          `json:"name"`
@@ -21,8 +26,29 @@ type StateResource struct {
 	Instances []StateInstance `json:"instances"`
 }
 
-// Address is the Terraform address of the resource, as an operator would type it.
-func (r StateResource) Address() string { return r.Type + "." + r.Name }
+// Address is the Terraform address of the resource block, module path included, as an
+// operator would type it.
+func (r StateResource) Address() string {
+	if r.Module != "" {
+		return r.Module + "." + r.Type + "." + r.Name
+	}
+	return r.Type + "." + r.Name
+}
+
+// InstanceAddress is the address of one instance of the block: the block address followed by
+// the count index or the for_each key, so a pool made with for_each is named exactly.
+func (r StateResource) InstanceAddress(inst StateInstance) string {
+	switch k := inst.IndexKey.(type) {
+	case nil:
+		return r.Address()
+	case string:
+		return r.Address() + `["` + k + `"]`
+	case float64:
+		return r.Address() + "[" + strconv.FormatFloat(k, 'f', -1, 64) + "]"
+	default:
+		return fmt.Sprintf("%s[%v]", r.Address(), k)
+	}
+}
 
 // State is the subset of a Terraform or OpenTofu state file that spanline reads.
 // Only identity is used: address, type, name and the resource's own name attribute.
@@ -83,7 +109,7 @@ func (s *State) NodePools() []Owner {
 			if name == "" {
 				continue
 			}
-			out = append(out, Owner{Name: name, Address: r.Address(), StateFile: s.Path, Type: r.Type})
+			out = append(out, Owner{Name: name, Address: r.InstanceAddress(inst), StateFile: s.Path, Type: r.Type})
 		}
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].Name < out[j].Name })
@@ -103,7 +129,7 @@ func (s *State) Clusters() []Owner {
 			if name == "" {
 				continue
 			}
-			out = append(out, Owner{Name: name, Address: r.Address(), StateFile: s.Path, Type: r.Type})
+			out = append(out, Owner{Name: name, Address: r.InstanceAddress(inst), StateFile: s.Path, Type: r.Type})
 		}
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].Name < out[j].Name })
@@ -123,7 +149,7 @@ func (s *State) HelmReleases() []Owner {
 			if name == "" {
 				continue
 			}
-			out = append(out, Owner{Name: ns + "/" + name, Address: r.Address(), StateFile: s.Path, Type: r.Type})
+			out = append(out, Owner{Name: ns + "/" + name, Address: r.InstanceAddress(inst), StateFile: s.Path, Type: r.Type})
 		}
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].Name < out[j].Name })

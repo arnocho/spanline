@@ -68,6 +68,7 @@ type podFacts struct {
 	hasNode bool
 	state   podState
 	signals []string
+	reason  string // why an unclassified pod is in neither cohort, read from its own fields
 }
 
 func (p podFacts) name() string { return p.pod.Metadata.Name }
@@ -125,6 +126,9 @@ func Analyze(snap *model.Snapshot, o Options) (*result.WhyReport, error) {
 	a.window = o.Window
 	if a.window <= 0 {
 		a.window = DefaultWindow
+	}
+	if a.now.IsZero() {
+		a.gap("no reference time: Options.Now and the snapshot's collectedAt are both unset, so the %s window is not applied and every dated change is listed", a.window)
 	}
 
 	w, err := resolveWorkload(snap, o.Workload, o.Namespace)
@@ -322,7 +326,9 @@ func selectorMatches(sel, labels map[string]string) bool {
 	}
 	sort.Strings(keys)
 	for _, k := range keys {
-		if labels[k] != sel[k] {
+		// An empty selector value still requires the key: a pod without it does not match.
+		v, present := labels[k]
+		if !present || v != sel[k] {
 			return false
 		}
 	}
@@ -341,8 +347,15 @@ var (
 
 const restartThreshold = 3
 
+// terminalPhases hold pods that no longer run at all. They carry no live attribute to
+// compare, and their Ready=False marks the end of their life, not a failure: neither cohort.
+var terminalPhases = map[string]bool{"Succeeded": true, "Failed": true}
+
 // classifyPod reports the cohort of one pod and the exact fields that put it there.
 func classifyPod(p model.Pod) (podState, []string) {
+	if terminalPhases[p.Status.Phase] {
+		return stateUnclassified, nil
+	}
 	var signals []string
 	statuses := append([]model.ContainerStatus(nil), p.Status.ContainerStatuses...)
 	sort.Slice(statuses, func(i, j int) bool { return statuses[i].Name < statuses[j].Name })
@@ -358,7 +371,8 @@ func classifyPod(p model.Pod) (podState, []string) {
 		}
 	}
 	ready, hasReady := readyCondition(p)
-	if hasReady && !ready {
+	// A Pending pod is not Ready by definition: only an explicit container signal fails it.
+	if hasReady && !ready && p.Status.Phase != "Pending" {
 		signals = append(signals, "conditions[Ready].status False")
 	}
 	if len(signals) > 0 {
@@ -370,23 +384,42 @@ func classifyPod(p model.Pod) (podState, []string) {
 	return stateUnclassified, nil
 }
 
+// unclassifiedReason names, from the pod's own fields, why it is in neither cohort.
+func unclassifiedReason(p model.Pod) string {
+	if terminalPhases[p.Status.Phase] {
+		return "status.phase " + p.Status.Phase
+	}
+	if p.Status.Phase == "Pending" {
+		return "status.phase Pending with no failing signal yet"
+	}
+	status, present := readyStatus(p)
+	if !present {
+		return "no conditions[Ready]"
+	}
+	return "conditions[Ready].status " + orAbsent(status)
+}
+
 func readyCondition(p model.Pod) (ready, present bool) {
+	switch status, _ := readyStatus(p); status {
+	case "True":
+		return true, true
+	case "False":
+		return false, true
+	default:
+		return false, false
+	}
+}
+
+// readyStatus returns the status of the Ready condition, and whether the condition exists.
+func readyStatus(p model.Pod) (status string, present bool) {
 	conds := append([]model.PodCondition(nil), p.Status.Conditions...)
 	sort.Slice(conds, func(i, j int) bool { return conds[i].Type < conds[j].Type })
 	for _, c := range conds {
-		if c.Type != "Ready" {
-			continue
-		}
-		switch c.Status {
-		case "True":
-			return true, true
-		case "False":
-			return false, true
-		default:
-			return false, false
+		if c.Type == "Ready" {
+			return c.Status, true
 		}
 	}
-	return false, false
+	return "", false
 }
 
 func (a *analysis) classify() {
@@ -400,15 +433,16 @@ func (a *analysis) classify() {
 		case stateHealthy:
 			a.healthy = append(a.healthy, a.selected[i])
 		default:
+			a.selected[i].reason = unclassifiedReason(a.selected[i].pod)
 			a.other = append(a.other, a.selected[i])
 		}
 	}
 	if len(a.other) > 0 {
 		var names []string
 		for _, p := range a.other {
-			names = append(names, p.name())
+			names = append(names, fmt.Sprintf("%s (%s)", p.name(), p.reason))
 		}
-		a.gap("%d pod(s) match the selector but carry neither a failing signal nor a ready condition, so they are in neither cohort: %s",
+		a.gap("%d pod(s) match the selector but are in neither cohort, so they are not compared and do not date the onset: %s",
 			len(names), strings.Join(names, ", "))
 	}
 }
@@ -426,9 +460,11 @@ func (a *analysis) findOnset() {
 		a.onsetSig = "no failing pod: no onset"
 		return
 	}
-	failingNames := map[string]bool{}
+	// The failing pods by name, with their creation time: an event dated before a pod
+	// existed belongs to an earlier pod of the same name, and is not this pod's signal.
+	failingPods := map[string]time.Time{}
 	for _, p := range a.failing {
-		failingNames[p.name()] = true
+		failingPods[p.name()] = p.pod.Metadata.CreationTimestamp
 	}
 
 	var cands []onsetCandidate
@@ -461,7 +497,7 @@ func (a *analysis) findOnset() {
 		}
 	}
 
-	events := a.warningEvents(failingNames)
+	events := a.warningEvents(failingPods)
 	for _, e := range events {
 		if e.FirstTimestamp.IsZero() {
 			continue
@@ -493,19 +529,34 @@ func (a *analysis) findOnset() {
 	})
 	a.onsetAt = cands[0].at
 	a.onsetSig = cands[0].field
+	if !a.now.IsZero() && a.onsetAt.Before(a.now.Add(-a.window)) {
+		a.gap("the onset (%s) predates the %s window: every change inside the window is later than the onset",
+			a.onsetAt.UTC().Format(time.RFC3339), a.window)
+	}
 }
 
 var onsetEventReasons = map[string]bool{
 	"OOMKilling": true, "BackOff": true, "Unhealthy": true, "Failed": true,
 }
 
-func (a *analysis) warningEvents(pods map[string]bool) []model.Event {
+// warningEvents returns the retained Warning events about the given pods of the workload's
+// namespace, oldest first. pods maps each pod name to its creation time: a pod of the same
+// name in another namespace, or an earlier pod of the same name, is not one of them.
+func (a *analysis) warningEvents(pods map[string]time.Time) []model.Event {
+	ns := a.work.Metadata.Namespace
 	var out []model.Event
 	for _, e := range a.snap.Events {
 		if e.Type != "Warning" || !onsetEventReasons[e.Reason] {
 			continue
 		}
-		if e.InvolvedObject.Kind != "Pod" || !pods[e.InvolvedObject.Name] {
+		if e.InvolvedObject.Kind != "Pod" || eventNamespace(e) != ns {
+			continue
+		}
+		created, selected := pods[e.InvolvedObject.Name]
+		if !selected {
+			continue
+		}
+		if !created.IsZero() && !e.FirstTimestamp.IsZero() && e.FirstTimestamp.Before(created) {
 			continue
 		}
 		out = append(out, e)
@@ -517,6 +568,15 @@ func (a *analysis) warningEvents(pods map[string]bool) []model.Event {
 		return out[i].Metadata.Name < out[j].Metadata.Name
 	})
 	return out
+}
+
+// eventNamespace is the namespace of the object an event is about: the involved object's
+// when it is recorded, the event's own otherwise.
+func eventNamespace(e model.Event) string {
+	if e.InvolvedObject.Namespace != "" {
+		return e.InvolvedObject.Namespace
+	}
+	return e.Metadata.Namespace
 }
 
 func cohortOf(pods []podFacts) result.Cohort {

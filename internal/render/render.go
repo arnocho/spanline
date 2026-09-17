@@ -164,21 +164,24 @@ func (p palette) status(s string) string {
 	}
 }
 
-// header writes the banner: one line naming the run and its scope, a rule, then a dim
-// sub line. Fields are already formatted as key=value.
+// header writes the banner: the line naming the run and its scope, a rule, then a dim
+// sub line. Fields are already formatted as key=value. Neither line runs past the width:
+// fields that do not fit continue on the next line, whole, because a banner names an
+// identity or a context in full or not at all.
 func header(b *strings.Builder, p palette, o Options, title string, fields, sub []string) {
-	line := title
-	if len(fields) > 0 {
-		line += gutter + strings.Join(fields, gutter)
+	lines := bannerLines(title, fields, o.width())
+	subLines := bannerLines("", sub, o.width())
+
+	for _, line := range lines {
+		b.WriteString(p.bold(line))
+		b.WriteString("\n")
 	}
-	subLine := strings.Join(sub, gutter)
 
-	b.WriteString(p.bold(line))
-	b.WriteString("\n")
-
-	rule := lipgloss.Width(line)
-	if w := lipgloss.Width(subLine); w > rule {
-		rule = w
+	rule := 0
+	for _, line := range append(append([]string{}, lines...), subLines...) {
+		if w := lipgloss.Width(line); w > rule {
+			rule = w
+		}
 	}
 	if rule > o.width() {
 		rule = o.width()
@@ -186,10 +189,60 @@ func header(b *strings.Builder, p palette, o Options, title string, fields, sub 
 	b.WriteString(p.dim(strings.Repeat("-", rule)))
 	b.WriteString("\n")
 
-	if subLine != "" {
-		b.WriteString(p.dim(subLine))
+	for _, line := range subLines {
+		if line == "" {
+			continue
+		}
+		b.WriteString(p.dim(line))
 		b.WriteString("\n")
 	}
+}
+
+// bannerLines lays fields out on as many lines as the width needs. A field is never split
+// while it can stand whole on a line of its own; one wider than the terminal is broken
+// across lines rather than clipped. Continuation lines are indented.
+func bannerLines(first string, fields []string, width int) []string {
+	lines := []string{first}
+	for _, f := range fields {
+		last := len(lines) - 1
+		switch {
+		case lines[last] == "":
+			lines[last] = f
+		case lipgloss.Width(lines[last]+gutter+f) <= width:
+			lines[last] += gutter + f
+		default:
+			lines = append(lines, indent1+f)
+		}
+	}
+	var out []string
+	for _, line := range lines {
+		out = append(out, splitWidth(line, width, indent1)...)
+	}
+	return out
+}
+
+// splitWidth breaks one line into pieces of at most width cells, on rune boundaries, with
+// every piece after the first indented. Style is applied by the caller, after the split.
+func splitWidth(line string, width int, indent string) []string {
+	if lipgloss.Width(line) <= width {
+		return []string{line}
+	}
+	var out []string
+	var b strings.Builder
+	used := 0
+	for _, r := range line {
+		rw := lipgloss.Width(string(r))
+		if used+rw > width && used > 0 {
+			out = append(out, strings.TrimRight(b.String(), " "))
+			b.Reset()
+			b.WriteString(indent)
+			used = lipgloss.Width(indent)
+		}
+		b.WriteRune(r)
+		used += rw
+	}
+	out = append(out, strings.TrimRight(b.String(), " "))
+	return out
 }
 
 // section writes a blank line and a bold section title.
@@ -423,12 +476,14 @@ func wrap(text string, width int) []string {
 
 // JSON marshals any report with stable indentation. Go's encoder sorts map keys, and the
 // report structs carry fixed field order, so two runs on the same report are byte identical.
+// Every timestamp is written in UTC, the clock the text output uses, so the same report
+// serialises to the same bytes whatever zone the machine is in.
 func JSON(v any) (string, error) {
 	var buf bytes.Buffer
 	enc := json.NewEncoder(&buf)
 	enc.SetEscapeHTML(false)
 	enc.SetIndent("", "  ")
-	if err := enc.Encode(v); err != nil {
+	if err := enc.Encode(scrub(v, false)); err != nil {
 		return "", err
 	}
 	return strings.TrimRight(buf.String(), "\n"), nil

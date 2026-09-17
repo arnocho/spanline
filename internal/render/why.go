@@ -19,6 +19,7 @@ func WhyText(r *result.WhyReport, o Options) string {
 		b.WriteString(indent1 + "no report to render\n")
 		return out(&b)
 	}
+	r = scrub(r, true).(*result.WhyReport)
 	w := o.width()
 
 	br := brief.Why(r)
@@ -73,22 +74,28 @@ func WhyText(r *result.WhyReport, o Options) string {
 			[]bool{false, false, false, false, true}, rows, indent1)
 	}
 
-	if len(r.Revisions) > 0 {
+	// The revision fallback always gets its section, so a run that had nothing to compare
+	// says so instead of leaving the reader to infer it.
+	if len(r.Revisions) > 0 || r.Mode == result.ModeRevision {
 		section(&b, p, "revisions")
-		rows := make([][]string, 0, len(r.Revisions))
-		for _, rev := range r.Revisions {
-			rows = append(rows, []string{
-				rev.Name,
-				itoa(rev.Number),
-				orEmpty(rev.Active),
-				itoa(rev.Replicas),
-				ts(rev.Created),
-				orEmpty(rev.Signals),
-			})
+		if len(r.Revisions) == 0 {
+			b.WriteString(indent1 + "no revision retained\n")
+		} else {
+			rows := make([][]string, 0, len(r.Revisions))
+			for _, rev := range r.Revisions {
+				rows = append(rows, []string{
+					rev.Name,
+					itoa(rev.Number),
+					orEmpty(rev.Active),
+					itoa(rev.Replicas),
+					ts(rev.Created),
+					orEmpty(rev.Signals),
+				})
+			}
+			writeTable(&b, p,
+				[]string{"REVISION", "NUM", "ACTIVE", "REPLICAS", "CREATED", "SIGNALS"},
+				[]bool{false, true, false, true, false, false}, rows, indent1)
 		}
-		writeTable(&b, p,
-			[]string{"REVISION", "NUM", "ACTIVE", "REPLICAS", "CREATED", "SIGNALS"},
-			[]bool{false, true, false, true, false, false}, rows, indent1)
 	}
 
 	section(&b, p, "suspects (ranked)")
@@ -143,6 +150,7 @@ func WhyMarkdown(r *result.WhyReport) string {
 		b.WriteString("# spanline why\n\nNo report to render.\n")
 		return out(&b)
 	}
+	r = scrub(r, true).(*result.WhyReport)
 
 	b.WriteString("# spanline why: " + orEmpty(r.Namespace) + "/" + orEmpty(r.Workload) + "\n")
 	mdBrief(&b, brief.Why(r))
@@ -188,15 +196,19 @@ func WhyMarkdown(r *result.WhyReport) string {
 		mdTable(&b, []string{"dimension", "failing values", "healthy values", "separation", "purity"}, dims)
 	}
 
-	if len(r.Revisions) > 0 {
+	if len(r.Revisions) > 0 || r.Mode == result.ModeRevision {
 		mdHeading(&b, 2, "Revisions")
-		revs := make([][]string, 0, len(r.Revisions))
-		for _, rev := range r.Revisions {
-			revs = append(revs, []string{
-				rev.Name, itoa(rev.Number), rev.Active, itoa(rev.Replicas), ts(rev.Created), rev.Signals,
-			})
+		if len(r.Revisions) == 0 {
+			b.WriteString("No revision retained.\n")
+		} else {
+			revs := make([][]string, 0, len(r.Revisions))
+			for _, rev := range r.Revisions {
+				revs = append(revs, []string{
+					rev.Name, itoa(rev.Number), rev.Active, itoa(rev.Replicas), ts(rev.Created), rev.Signals,
+				})
+			}
+			mdTable(&b, []string{"revision", "number", "active", "replicas", "created", "signals"}, revs)
 		}
-		mdTable(&b, []string{"revision", "number", "active", "replicas", "created", "signals"}, revs)
 	}
 
 	mdHeading(&b, 2, "Suspects (ranked)")
@@ -206,10 +218,10 @@ func WhyMarkdown(r *result.WhyReport) string {
 		sus := make([][]string, 0, len(r.Suspects))
 		for i, s := range r.Suspects {
 			sus = append(sus, []string{
-				itoa(i + 1), string(s.Verdict), ts(s.At), s.Title, s.Dimension, string(s.Actor), s.Attribution,
+				itoa(i + 1), string(s.Verdict), ts(s.At), s.Title, s.Dimension, string(s.Actor), s.Attribution, s.ID,
 			})
 		}
-		mdTable(&b, []string{"rank", "verdict", "at", "title", "dimension", "actor", "attribution"}, sus)
+		mdTable(&b, []string{"rank", "verdict", "at", "title", "dimension", "actor", "attribution", "id"}, sus)
 		for i, s := range r.Suspects {
 			if len(s.Diff) == 0 && len(s.Evidence) == 0 {
 				continue

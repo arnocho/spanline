@@ -18,6 +18,7 @@ func DoctorText(r *result.DoctorReport, o Options) string {
 		b.WriteString(indent1 + "no report to render\n")
 		return out(&b)
 	}
+	r = scrub(r, true).(*result.DoctorReport)
 	w := o.width()
 
 	header(&b, p, o, "spanline doctor", []string{
@@ -49,11 +50,15 @@ func DoctorText(r *result.DoctorReport, o Options) string {
 		}
 	} else {
 		// The whole checks table is noise next to the one thing a security team asks:
-		// what did the cluster refuse. An empty list is stated, never left blank.
+		// what did the cluster refuse. An empty list is stated, never left blank, and a
+		// report that ran no check at all says so rather than reading as no refusal.
 		section(&b, p, "refused reads")
-		if refused := refusedReads(r.Checks); len(refused) == 0 {
+		switch refused := refusedReads(r.Checks); {
+		case len(r.Checks) == 0:
+			b.WriteString(indent1 + "no check run\n")
+		case len(refused) == 0:
 			b.WriteString(indent1 + "none recorded\n")
-		} else {
+		default:
 			writeFields(&b, refused, indent1)
 		}
 	}
@@ -76,15 +81,22 @@ func DoctorText(r *result.DoctorReport, o Options) string {
 	return out(&b)
 }
 
-// refusedReads lists the checks whose status records a refusal, in report order. The detail
+// refusedReads lists the checks whose status records a refusal, in report order. The doctor
+// answers each read probe with "yes" or "no", so "no" on a check that names a read or a list
+// is a refusal too; "no" on a capability check is the opposite, and stays out. The detail
 // printed is the check's own, so a line never claims more than the report holds.
 func refusedReads(checks []result.Check) [][2]string {
 	var refused [][2]string
 	for _, c := range checks {
-		switch strings.ToLower(strings.TrimSpace(c.Status)) {
-		case "denied", "refused", "forbidden":
-			refused = append(refused, [2]string{c.Name, orEmpty(c.Detail)})
+		status := strings.ToLower(strings.TrimSpace(c.Status))
+		name := strings.ToLower(strings.TrimSpace(c.Name))
+		switch {
+		case status == "denied" || status == "refused" || status == "forbidden":
+		case status == "no" && (strings.HasPrefix(name, "read ") || strings.HasPrefix(name, "list ")):
+		default:
+			continue
 		}
+		refused = append(refused, [2]string{c.Name, orEmpty(c.Detail)})
 	}
 	return refused
 }

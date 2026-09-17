@@ -47,35 +47,11 @@ func reveal(i int, since time.Duration) revealState {
 	}
 }
 
-// revealDone reports when every row of a screen has finished arriving.
-func revealDone(rows int, since time.Duration) bool {
-	if rows <= 0 {
-		return true
-	}
-	return since >= time.Duration(rows-1)*revealStep+revealFadeIn
-}
-
 // spinnerFrames is a calm spinner: no bouncing, no braille noise.
 var spinnerFrames = []string{"◐", "◓", "◑", "◒"}
 
 func spinner(since time.Duration) string {
 	return spinnerFrames[int(since/(140*time.Millisecond))%len(spinnerFrames)]
-}
-
-// step is one line of the collection screen, which doubles as an explanation of what
-// spanline reads and what it deliberately does not.
-type step struct {
-	What string
-	Note string
-}
-
-// stepState returns how many steps are done and whether one is in flight.
-func stepState(n int, since time.Duration) (done int, running bool) {
-	done = int(since / stepEvery)
-	if done > n {
-		done = n
-	}
-	return done, done < n
 }
 
 // pulsing reports whether a just selected row should still be highlighted.

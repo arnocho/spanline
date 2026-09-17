@@ -10,6 +10,8 @@ import (
 	"sort"
 	"strings"
 	"time"
+	"unicode"
+	"unicode/utf8"
 
 	"github.com/arnocho/spanline/internal/result"
 )
@@ -33,6 +35,9 @@ type Brief struct {
 	Empty    string // set when there is genuinely nothing to report
 }
 
+// maxKeyLines caps the facts under a headline: a screen, not a report.
+const maxKeyLines = 6
+
 func plural(n int, one, many string) string {
 	if n == 1 {
 		return one
@@ -40,11 +45,41 @@ func plural(n int, one, many string) string {
 	return many
 }
 
+// shortTime prints the clock in UTC, the clock the full report prints, so the short screen
+// and the details under it never disagree by a time zone.
 func shortTime(t time.Time) string {
 	if t.IsZero() {
 		return "unknown"
 	}
-	return t.Format("15:04")
+	return t.UTC().Format("15:04")
+}
+
+// scope joins the parts of a context line that are set, so an empty report yields an
+// empty scope rather than a run of separators.
+func scope(parts ...string) string {
+	return join("  ", parts...)
+}
+
+func join(sep string, parts ...string) string {
+	kept := make([]string, 0, len(parts))
+	for _, p := range parts {
+		if p = strings.TrimSpace(p); p != "" {
+			kept = append(kept, p)
+		}
+	}
+	return strings.Join(kept, sep)
+}
+
+// workloadName is the bare name of a workload reference such as deployment/checkout.
+func workloadName(ref string) string {
+	name := ref
+	if i := strings.LastIndexByte(name, '/'); i >= 0 {
+		name = name[i+1:]
+	}
+	if strings.TrimSpace(name) == "" {
+		return "this workload"
+	}
+	return name
 }
 
 // Why answers: what separates the failing pods, and which change made it.
@@ -52,21 +87,30 @@ func Why(r *result.WhyReport) Brief {
 	if r == nil {
 		return Brief{Empty: "no report"}
 	}
-	b := Brief{Sub: fmt.Sprintf("%s  %s  %s", r.Context, r.Namespace, r.Workload)}
+	b := Brief{Sub: scope(r.Context, r.Namespace, r.Workload)}
 
-	name := r.Workload
-	if i := strings.IndexByte(name, '/'); i >= 0 {
-		name = name[i+1:]
-	}
+	name := workloadName(r.Workload)
 	total := r.Failing.Count + r.Healthy.Count
 
-	// The separating dimension is the whole point of this screen.
-	var sep *result.Dimension
+	// The separating dimension is the whole point of this screen: the first clean split,
+	// or failing that the first partial one, which is named as partial and never as a split.
+	var sep, part *result.Dimension
+	for i := range r.Dimensions {
+		d := &r.Dimensions[i]
+		if d.Separation == result.Total && sep == nil {
+			sep = d
+		}
+		if d.Separation == result.Partial && part == nil {
+			part = d
+		}
+	}
+	if sep != nil {
+		part = nil
+	}
 	others := 0
 	for i := range r.Dimensions {
-		d := r.Dimensions[i]
-		if d.Separation == result.Total && sep == nil {
-			sep = &r.Dimensions[i]
+		d := &r.Dimensions[i]
+		if d == sep || d == part {
 			continue
 		}
 		if d.Separation == result.Total || d.Separation == result.Partial {
@@ -74,28 +118,43 @@ func Why(r *result.WhyReport) Brief {
 		}
 	}
 
+	// The change to name: the first that splits the cohorts, else the closest in time.
+	// Position never outranks the verdict, so a TEMPORAL change listed first does not hide
+	// a SPLITS one under it.
 	var top *result.Suspect
-	lower := 0
-	for i := range r.Suspects {
-		s := r.Suspects[i]
-		if top == nil && (s.Verdict == result.Splits || s.Verdict == result.Temporal) {
-			top = &r.Suspects[i]
-			continue
+	for _, want := range []result.Verdict{result.Splits, result.Temporal} {
+		for i := range r.Suspects {
+			if r.Suspects[i].Verdict == want {
+				top = &r.Suspects[i]
+				break
+			}
 		}
-		lower++
+		if top != nil {
+			break
+		}
+	}
+	lower := len(r.Suspects)
+	if top != nil {
+		lower--
 	}
 
+	fail := plural(r.Failing.Count, "fails", "fail")
+	pods := plural(total, "pod", "pods")
 	switch {
 	case r.Mode == result.ModeRevision:
 		b.Headline = fmt.Sprintf("every pod of %s is failing, so there is nothing healthy left to compare", name)
 		b.Sev = result.Outage
 	case sep != nil:
-		b.Headline = fmt.Sprintf("%d of %d pods of %s fail, and %s tells them apart",
-			r.Failing.Count, total, name, sep.Name)
+		b.Headline = fmt.Sprintf("%d of %d %s of %s %s, and %s tells them apart",
+			r.Failing.Count, total, pods, name, fail, sep.Name)
 		b.Sev = result.Disruption
+	case part != nil:
+		b.Headline = fmt.Sprintf("%d of %d %s of %s %s, and %s only partly tells them apart",
+			r.Failing.Count, total, pods, name, fail, part.Name)
+		b.Sev = result.Risk
 	case r.Failing.Count > 0:
-		b.Headline = fmt.Sprintf("%d of %d pods of %s fail, and nothing collected tells them apart",
-			r.Failing.Count, total, name)
+		b.Headline = fmt.Sprintf("%d of %d %s of %s %s, and nothing collected tells them apart",
+			r.Failing.Count, total, pods, name, fail)
 		b.Sev = result.NotAssessed
 	default:
 		b.Headline = fmt.Sprintf("no pod of %s is failing in this snapshot", name)
@@ -108,11 +167,10 @@ func Why(r *result.WhyReport) Brief {
 		b.Key = append(b.Key, Line{Label: "started", Value: shortTime(r.OnsetAt), Note: onsetWord(r.OnsetSignal)})
 	}
 	if sep != nil {
-		b.Key = append(b.Key, Line{
-			Label: "separates them", Value: sep.Name,
-			Note: fmt.Sprintf("%s on the failing side, %s on the healthy one", cut(sep.FailingValues, 34), cut(sep.HealthyValues, 34)),
-			Sev:  result.Disruption,
-		})
+		b.Key = append(b.Key, Line{Label: "separates them", Value: sep.Name, Note: sides(sep), Sev: result.Disruption})
+	}
+	if part != nil {
+		b.Key = append(b.Key, Line{Label: "partly separates them", Value: part.Name, Note: sides(part), Sev: result.Risk})
 	}
 	if r.Mode == result.ModeRevision && len(r.Revisions) >= 2 {
 		b.Key = append(b.Key, Line{
@@ -121,39 +179,52 @@ func Why(r *result.WhyReport) Brief {
 			Sev:  result.NotAssessed,
 		})
 	}
+	hiddenDiff := 0
 	if top != nil {
 		note := top.Attribution
 		if note == "" {
 			note = string(top.Actor)
 		}
 		b.Key = append(b.Key, Line{
-			Label: verdictWord(top.Verdict), Value: top.Title, Note: fmt.Sprintf("%s, %s", shortTime(top.At), note),
+			Label: verdictWord(top.Verdict), Value: top.Title, Note: join(", ", shortTime(top.At), note),
 			Ref: top.ID,
 		})
 		for i, d := range top.Diff {
+			if len(b.Key) >= maxKeyLines {
+				hiddenDiff = len(top.Diff) - i
+				break
+			}
 			label := ""
 			if i == 0 {
 				label = "it changed"
 			}
 			b.Key = append(b.Key, Line{Label: label, Value: d, Ref: top.ID})
-			if len(b.Key) >= 6 {
-				break
-			}
 		}
 	}
 
 	var more []string
 	if others > 0 {
-		more = append(more, fmt.Sprintf("%d other %s differ", others, plural(others, "dimension", "dimensions")))
+		more = append(more, fmt.Sprintf("%d other %s", others, plural(others, "dimension differs", "dimensions differ")))
 	}
-	if lower > 0 {
+	switch {
+	case top != nil && lower > 0:
 		more = append(more, fmt.Sprintf("%d %s ranked lower", lower, plural(lower, "change", "changes")))
+	case lower > 0:
+		more = append(more, fmt.Sprintf("%d %s ranked, none matched", lower, plural(lower, "change", "changes")))
+	}
+	if hiddenDiff > 0 {
+		more = append(more, fmt.Sprintf("%d more diff %s", hiddenDiff, plural(hiddenDiff, "line", "lines")))
 	}
 	if n := len(r.Gaps); n > 0 {
 		more = append(more, fmt.Sprintf("%d coverage %s", n, plural(n, "gap", "gaps")))
 	}
 	b.More = strings.Join(more, ", ")
 	return b
+}
+
+// sides is the aside under a separating dimension: what each cohort carries.
+func sides(d *result.Dimension) string {
+	return fmt.Sprintf("%s on the failing side, %s on the healthy one", cut(d.FailingValues, 34), cut(d.HealthyValues, 34))
 }
 
 func onsetWord(signal string) string {
@@ -183,22 +254,38 @@ func verdictWord(v result.Verdict) string {
 }
 
 // Note shortens a finding's reason to the part an operator reads first: the consequence.
-// The full sentence stays in the report and in the evidence panel.
+// The full sentence stays in the report and in the evidence panel. A reason that ends where
+// its consequence should start is returned whole, never as nothing.
 func Note(reason string) string {
 	if i := strings.Index(reason, ", so "); i >= 0 {
-		return strings.TrimSpace(reason[i+len(", so "):])
+		if rest := strings.TrimSpace(reason[i+len(", so "):]); rest != "" {
+			return rest
+		}
 	}
 	if i := strings.Index(reason, ", which "); i >= 0 {
-		return strings.TrimSpace(reason[i+2:])
+		if rest := strings.TrimSpace(reason[i+2:]); rest != "" {
+			return rest
+		}
 	}
-	return reason
+	return strings.TrimSpace(reason)
 }
 
+// cut shortens a value to n characters. It counts runes, not bytes, so a multi-byte
+// character is never split in half, and it never strands a base letter from the combining
+// marks that follow it.
 func cut(s string, n int) string {
-	if len(s) <= n {
+	if utf8.RuneCountInString(s) <= n {
 		return s
 	}
-	return s[:n-1] + "..."
+	runes := []rune(s)
+	keep := n - 1
+	if keep < 0 {
+		keep = 0
+	}
+	for keep < len(runes) && unicode.Is(unicode.M, runes[keep]) {
+		keep++
+	}
+	return strings.TrimRight(string(runes[:keep]), " ") + "..."
 }
 
 // Impact answers: what breaks if this happens.
@@ -206,24 +293,41 @@ func Impact(r *result.ImpactReport) Brief {
 	if r == nil {
 		return Brief{Empty: "no report"}
 	}
-	b := Brief{Sub: fmt.Sprintf("%s  %s", r.Context, r.Source), Sev: r.Verdict}
+	// An absent verdict is NOT ASSESSED, never an implicit pass.
+	verdict := r.Verdict
+	if strings.TrimSpace(string(verdict)) == "" {
+		verdict = result.NotAssessed
+	}
+	b := Brief{Sub: scope(r.Context, r.Source), Sev: verdict}
 	counts := map[result.Severity]int{}
 	var worst []result.Finding
 	for _, f := range r.Findings {
 		counts[f.Severity]++
-		if f.Severity == r.Verdict && len(worst) < 3 {
+		if f.Severity == verdict && len(worst) < 3 {
 			worst = append(worst, f)
 		}
 	}
-	switch r.Verdict {
+	switch verdict {
 	case result.Outage:
 		n := counts[result.Outage]
 		b.Headline = fmt.Sprintf("%d %s would lose every replica", n, plural(n, "workload", "workloads"))
 	case result.Disruption:
 		n := counts[result.Disruption]
 		b.Headline = fmt.Sprintf("nothing goes fully down, but %d %s would be disrupted", n, plural(n, "thing", "things"))
+	case result.Risk:
+		n := counts[result.Risk]
+		b.Headline = fmt.Sprintf("nothing goes down, but %d %s would be left at risk", n, plural(n, "thing", "things"))
 	case result.NotAssessed:
-		b.Headline = "nothing was simulated, so this is not a pass"
+		n := counts[result.NotAssessed]
+		switch {
+		case n == 0:
+			b.Headline = "nothing was assessed, so this is not a pass"
+		case n == len(r.Findings):
+			// Nothing else was observed, so the simulation never ran.
+			b.Headline = "nothing was simulated, so this is not a pass"
+		default:
+			b.Headline = fmt.Sprintf("%d %s could not be assessed, so this is not a pass", n, plural(n, "thing", "things"))
+		}
 	default:
 		b.Headline = "nothing in this snapshot breaks"
 		b.Empty = "no impact found on the scope that was read"
@@ -238,8 +342,11 @@ func Impact(r *result.ImpactReport) Brief {
 		b.Key = append(b.Key, Line{Label: strings.ToLower(string(f.Severity)), Value: f.Object, Note: cut(Note(f.Reason), 64), Sev: f.Severity, Ref: f.Object})
 	}
 	var more []string
+	if hidden := counts[verdict] - len(worst); hidden > 0 {
+		more = append(more, fmt.Sprintf("%d more %s", hidden, strings.ToLower(string(verdict))))
+	}
 	for _, s := range []result.Severity{result.Outage, result.Disruption, result.Risk, result.NotAssessed, result.Info} {
-		if n := counts[s]; n > 0 && s != r.Verdict {
+		if n := counts[s]; n > 0 && s != verdict {
 			more = append(more, fmt.Sprintf("%d %s", n, strings.ToLower(string(s))))
 		}
 	}
@@ -284,6 +391,10 @@ func Estate(r *result.EstateReport) Brief {
 	case risks > 0:
 		b.Headline = fmt.Sprintf("nothing is down, %d %s would not survive a node loss", risks, plural(risks, "thing", "things"))
 		b.Sev = result.Risk
+	case unassessed > 0:
+		// Something could not be assessed: not fragile as far as was read, and not a pass.
+		b.Headline = fmt.Sprintf("nothing fragile in what was read, but %d %s could not be assessed", unassessed, plural(unassessed, "thing", "things"))
+		b.Sev = result.NotAssessed
 	default:
 		b.Headline = "nothing fragile in what was read"
 		b.Sev = result.Info
@@ -308,6 +419,9 @@ func Estate(r *result.EstateReport) Brief {
 func Priorities(r *result.EstateReport, n int) []Line {
 	if r == nil {
 		return nil
+	}
+	if n < 0 {
+		n = 0
 	}
 	f := make([]result.Finding, 0, len(r.Risks))
 	for _, x := range r.Risks {

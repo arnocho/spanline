@@ -52,12 +52,19 @@ func Plan(snap *model.Snapshot, plan *tfplan.Plan, states []*tfplan.State, sourc
 		planned[pc.Pool] = true
 		nodes, key := nodesForPool(snap, pc.Pool)
 		action := actionWord(pc.Actions)
+		create := tfplan.Change{Actions: pc.Actions}.IsCreate()
 
 		line := pc.Address + " (" + action + ") -> "
 		if len(nodes) == 0 {
 			line += "no live node carries this pool name"
 		} else {
 			line += fmt.Sprintf("nodes %s=%s (%d)", key, pc.Pool, len(nodes))
+		}
+		if pc.Cluster != "" {
+			line += ", cluster " + pc.Cluster + " in the plan"
+			if pc.Cluster != snap.Context {
+				line += " (the snapshot context is " + snap.Context + ")"
+			}
 		}
 		mapping = append(mapping, line+stateNote(owners, pc.Pool))
 
@@ -67,17 +74,39 @@ func Plan(snap *model.Snapshot, plan *tfplan.Plan, states []*tfplan.State, sourc
 			"pool name read from the plan: " + emptyOr(pc.Pool, "empty"),
 			"node label keys read to find it: " + strings.Join(poolLabelKeys, ", "),
 		}
+		if pc.Cluster != "" {
+			ev = append(ev, "cluster this pool belongs to, from "+pc.ClusterAttribute+" in the plan: "+pc.Cluster)
+			if pc.Cluster != snap.Context {
+				ev = append(ev, "kube context of this snapshot: "+snap.Context+", a different name, so the pool was matched on its name alone: check that this plan targets this cluster")
+			}
+		}
 		if pc.ActionReason != "" {
 			ev = append(ev, "resource_changes[].action_reason: "+pc.ActionReason)
 		}
 
 		if len(nodes) == 0 {
+			if create {
+				a.add(result.Info, "NodePool", pc.Address,
+					"this plan creates "+named("pool", pc.Pool)+", which no live node carries yet, so nothing that runs today moves",
+					ev)
+				continue
+			}
 			a.add(result.NotAssessed, "NodePool", pc.Address,
 				"this plan changes a pool that no live node claims, so spanline cannot say what the change would move, and silence here is not a pass",
 				ev)
 			continue
 		}
 		ev = append(ev, fmt.Sprintf("live nodes matched on %s=%s: %d", key, pc.Pool, len(nodes)))
+
+		// A lowered count takes nodes out of a pool the plan otherwise leaves standing, and the
+		// plan never says which ones, so the loss cannot be simulated node by node.
+		shrink, countEv := loweredCounts(pc, len(nodes))
+		ev = append(ev, countEv...)
+		if shrink != "" && pc.Effect != tfplan.EffectReplaces && pc.Effect != tfplan.EffectRotates {
+			a.addCtx(result.NotAssessed, "NodePool", pc.Address, shrink, ev,
+				"to simulate a chosen set of nodes, run impact with --nodes on the names expected to leave")
+			continue
+		}
 
 		switch pc.Effect {
 		case tfplan.EffectReplaces:
@@ -86,9 +115,11 @@ func Plan(snap *model.Snapshot, plan *tfplan.Plan, states []*tfplan.State, sourc
 			a.doom(nodes)
 			rotating = append(rotating, pc.Address)
 		case tfplan.EffectNone:
-			a.add(result.Info, "NodePool", pc.Address,
-				fmt.Sprintf("this change moves no node, so the %d nodes of pool %s stay where they are", len(nodes), pc.Pool),
-				ev)
+			reason := fmt.Sprintf("this change moves no node, so the %d nodes of pool %s stay where they are", len(nodes), pc.Pool)
+			if create {
+				reason = fmt.Sprintf("this change creates pool %s and destroys nothing, so the %d live nodes carrying that name stay where they are", pc.Pool, len(nodes))
+			}
+			a.add(result.Info, "NodePool", pc.Address, reason, ev)
 		default:
 			attrs := pc.Unmodelled
 			if len(attrs) == 0 {
@@ -113,11 +144,18 @@ func Plan(snap *model.Snapshot, plan *tfplan.Plan, states []*tfplan.State, sourc
 			"cluster name read from the plan: " + emptyOr(cc.Cluster, "empty"),
 		}
 
-		if cc.Effect == tfplan.EffectReplaces {
+		switch cc.Effect {
+		case tfplan.EffectReplaces:
 			mapping = append(mapping, fmt.Sprintf("%s (%s) -> every live node (%d)", cc.Address, action, len(snap.Nodes)))
 			a.doom(snap.Nodes)
 			a.add(result.Disruption, "Cluster", cc.Address,
 				"this plan destroys and recreates the cluster resource itself, so every node in it goes away at once",
+				ev)
+			continue
+		case tfplan.EffectNone:
+			mapping = append(mapping, cc.Address+" ("+action+") -> no live node, this cluster does not exist yet")
+			a.add(result.Info, "Cluster", cc.Address,
+				"this plan creates "+named("cluster", cc.Cluster)+", which does not exist yet, so no live node moves",
 				ev)
 			continue
 		}
@@ -167,7 +205,7 @@ func addOtherChanges(a *analysis, plan *tfplan.Plan, pools []tfplan.PoolChange, 
 	}
 	byType := map[string]int{}
 	for _, rc := range plan.ResourceChanges {
-		if rc.Change.IsNoop() || touched[rc.Address] {
+		if !rc.IsChange() || touched[rc.Address] {
 			continue
 		}
 		byType[rc.Type]++
@@ -185,6 +223,44 @@ func addOtherChanges(a *analysis, plan *tfplan.Plan, pools []tfplan.PoolChange, 
 
 	a.add(result.Info, "Plan", "changes outside the node pools",
 		fmt.Sprintf("%d changes in this plan touch no Kubernetes node", total), ev)
+}
+
+// named reads "pool apps", or says the name is not known yet when the plan computes it at apply.
+func named(kind, name string) string {
+	if name == "" {
+		return "a " + kind + " whose name is not known until apply"
+	}
+	return kind + " " + name
+}
+
+// loweredCounts reads the count attributes the plan lowers on a pool, against the live nodes
+// that carry it. It returns the reason nodes leave without being named, empty when none does,
+// and the evidence lines for every lowered count, harmless ones included.
+func loweredCounts(pc tfplan.PoolChange, live int) (string, []string) {
+	var reason string
+	var ev []string
+	for _, c := range pc.Lowered {
+		line := fmt.Sprintf("resource_changes[].change.before and after: %s %d to %d", c.Attribute, c.Before, c.After)
+		switch c.Attribute {
+		case "node_count", "scaling_config.desired_size":
+			ev = append(ev, line)
+			if reason == "" {
+				reason = fmt.Sprintf("this plan lowers %s of pool %s from %d to %d while %d live nodes carry it, so nodes leave it and the plan does not say which, so spanline cannot simulate what they carry",
+					c.Attribute, pc.Pool, c.Before, c.After, live)
+			}
+		case "max_count", "scaling_config.max_size":
+			if c.After < int64(live) {
+				ev = append(ev, line)
+				if reason == "" {
+					reason = fmt.Sprintf("this plan lowers %s of pool %s to %d while %d live nodes carry it, so the autoscaler removes nodes the plan does not name, and spanline cannot simulate what they carry",
+						c.Attribute, pc.Pool, c.After, live)
+				}
+			} else {
+				ev = append(ev, fmt.Sprintf("%s, not under the %d live nodes, so no node leaves for it", line, live))
+			}
+		}
+	}
+	return reason, ev
 }
 
 // poolOwners indexes the node pools the state files declare, by pool name.

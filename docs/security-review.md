@@ -11,10 +11,13 @@ no database, no account, no licence server.
 
 ## What it can do
 
-Read. Through the `kubectl` already on the machine, restricted to an allowlist of read subcommands:
-`get`, `version`, `config`, `auth`, `api-resources`. The allowlist is enforced before every
-execution in `internal/collect/kubectl.go`, and any other subcommand returns a refusal rather than
-running. There is no code path that patches, applies, deletes, scales, evicts, cordons or drains.
+Read. Through the `kubectl` already on the machine, restricted to an allowlist of exact read
+subcommands: `get` (any positional naming Secrets is refused, and so is `--raw`), `config view`,
+`config get-contexts`, `config current-context`, `auth can-i`, `auth whoami`, `version` and
+`api-resources`. Impersonation flags (`--as`, `--as-group`, `--as-uid`) are refused anywhere. The
+allowlist is enforced before every execution in `internal/collect/kubectl.go`, and any other
+subcommand returns a refusal rather than running. There is no code path that patches, applies,
+deletes, scales, evicts, cordons or drains, and none that writes to the kubeconfig.
 
 It also reads Terraform or OpenTofu JSON you already have: a state file, or a plan your pipeline
 exported with `terraform show -json`. It never runs `terraform`, so no provider is downloaded, no

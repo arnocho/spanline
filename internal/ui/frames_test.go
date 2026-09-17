@@ -131,14 +131,19 @@ func TestOtherScreens(t *testing.T) {
 
 	m := newModel(d, w, h)
 	m.t = NewTheme(w, false)
-	m.collecting = false
+	m.loading = false
 
 	// the reading animation names what is read, and says what is never read
 	collect := Frame(d, ViewOverview, w, h, 200*time.Millisecond, 0, false)
-	for _, want := range []string{"reading", "nodes and pools", "secrets"} {
+	for _, want := range []string{"reading", "nodes and pools"} {
 		if !strings.Contains(collect, want) {
 			t.Errorf("the reading screen does not mention %q", want)
 		}
+	}
+	// the closing promise appears once every read is on screen, just before the views arrive
+	late := Frame(d, ViewOverview, w, h, 850*time.Millisecond, 0, false)
+	if !strings.Contains(late, "secrets") {
+		t.Errorf("the end of the reading screen does not state that secrets are never read:\n%s", late)
 	}
 
 	// the key map explains every binding and what each view answers
@@ -247,7 +252,7 @@ func TestNavigation(t *testing.T) {
 	d := loadData(t)
 	m := newModel(d, 96, 30)
 	m.t = NewTheme(96, false)
-	m.collecting = false
+	m.loading = false
 
 	// down moves the selection, and the selected row is the one drawn as selected
 	first := m.cursor[ViewOverview]

@@ -3,6 +3,7 @@ package ui
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/arnocho/spanline/internal/brief"
 	"github.com/arnocho/spanline/internal/result"
@@ -48,7 +49,7 @@ func findingDetail(f result.Finding) []string {
 }
 
 // overviewRows answers: where should I look first, and who owns what.
-func overviewRows(t Theme, r *result.EstateReport, expanded bool) []row {
+func overviewRows(t Theme, r *result.EstateReport, expanded bool, actions bool) []row {
 	if r == nil {
 		return nil
 	}
@@ -77,6 +78,7 @@ func overviewRows(t Theme, r *result.EstateReport, expanded bool) []row {
 				sev:        line.Sev,
 				detail:     findingDetail(f),
 				selectable: true,
+				act:        workloadAction(f, actions),
 			})
 		}
 		rows = append(rows, spacer())
@@ -95,10 +97,7 @@ func overviewRows(t Theme, r *result.EstateReport, expanded bool) []row {
 		}
 		rows = append(rows, row{
 			render: func(th Theme, sel bool) string {
-				caret := "  "
-				if sel {
-					caret = th.Accent("› ")
-				}
+				caret := th.caret(sel)
 				namePlain := pad(cut(c.Context, 18), 18)
 				statsPlain := fmt.Sprintf("%2d nodes  %3d pods  %2d workloads", c.Nodes, c.Pods, c.Workloads)
 				if th.Narrow() {
@@ -159,10 +158,7 @@ func overviewRows(t Theme, r *result.EstateReport, expanded bool) []row {
 		}
 		rows = append(rows, row{
 			render: func(th Theme, sel bool) string {
-				caret := "  "
-				if sel {
-					caret = th.Accent("› ")
-				}
+				caret := th.caret(sel)
 				namePlain := pad(cut(p.Context+" "+p.Pool, 26), 26)
 				nodesPlain := pad(fmt.Sprintf("%2d %s", p.Nodes, plural(p.Nodes, "node", "nodes")), 9)
 				meterW := 8
@@ -183,6 +179,7 @@ func overviewRows(t Theme, r *result.EstateReport, expanded bool) []row {
 			ref:        p.Pool,
 			sev:        ownSev,
 			selectable: true,
+			act:        poolAction(p, actions),
 			detail: []string{
 				fmt.Sprintf("pool %s in context %s", p.Pool, p.Context),
 				fmt.Sprintf("nodes %d, zones %s", p.Nodes, orNone(p.Zones)),
@@ -254,6 +251,10 @@ func incidentRows(t Theme, r *result.WhyReport, expanded bool) []row {
 		}})
 	}
 	rows = append(rows, spacer())
+	if tl := timelineRows(t, r); len(tl) > 0 {
+		rows = append(rows, tl...)
+		rows = append(rows, spacer())
+	}
 
 	// Only the dimensions that actually differ earn a line. The rest is one dim sentence.
 	var differ []result.Dimension
@@ -283,10 +284,7 @@ func incidentRows(t Theme, r *result.WhyReport, expanded bool) []row {
 			}
 			rows = append(rows, row{
 				render: func(th Theme, sel bool) string {
-					caret := "  "
-					if sel {
-						caret = th.Accent("› ")
-					}
+					caret := th.caret(sel)
 					name := pad(d.Name, 24)
 					if sel {
 						name = th.bold(colText, name)
@@ -461,4 +459,102 @@ func impactRows(t Theme, r *result.ImpactReport, expanded bool) []row {
 		}
 	}
 	return rows
+}
+
+// workloadAction offers "why" on a finding that names a workload the cohort analysis can read.
+func workloadAction(f result.Finding, enabled bool) *rowAction {
+	if !enabled {
+		return nil
+	}
+	switch f.Kind {
+	case "Deployment", "StatefulSet", "DaemonSet":
+	default:
+		return nil
+	}
+	ns, name := f.Object, f.Object
+	if i := strings.IndexByte(f.Object, '/'); i >= 0 {
+		ns, name = f.Object[:i], f.Object[i+1:]
+	}
+	return &rowAction{kind: "why", context: f.Context, namespace: ns, name: strings.ToLower(f.Kind) + "/" + name}
+}
+
+// poolAction offers "impact" on a node pool: what breaks if it goes away.
+func poolAction(p result.PoolSummary, enabled bool) *rowAction {
+	if !enabled || p.Pool == "" || p.Pool == "unlabelled" {
+		return nil
+	}
+	return &rowAction{kind: "impact", context: p.Context, selector: "pool=" + p.Pool}
+}
+
+// timelineRows draws when each change landed relative to the onset, on one line, so the eye
+// sees the order before reading a single timestamp.
+func timelineRows(t Theme, r *result.WhyReport) []row {
+	if r == nil || r.OnsetAt.IsZero() || len(r.Suspects) == 0 {
+		return nil
+	}
+	type mark struct {
+		at    time.Time
+		glyph string
+		sev   result.Severity
+		label string
+	}
+	var marks []mark
+	first := r.OnsetAt
+	for _, s := range r.Suspects {
+		if s.At.IsZero() {
+			continue
+		}
+		sev := result.Info
+		switch s.Verdict {
+		case result.Splits:
+			sev = result.Disruption
+		case result.Temporal:
+			sev = result.Risk
+		}
+		marks = append(marks, mark{at: s.At, glyph: "●", sev: sev, label: s.At.Format("15:04")})
+		if s.At.Before(first) {
+			first = s.At
+		}
+	}
+	if len(marks) == 0 {
+		return nil
+	}
+	marks = append(marks, mark{at: r.OnsetAt, glyph: "✖", sev: result.Outage, label: r.OnsetAt.Format("15:04") + " onset"})
+	last := r.OnsetAt
+	for _, m := range marks {
+		if m.at.After(last) {
+			last = m.at
+		}
+	}
+	span := last.Sub(first)
+	width := t.Inner() - 14
+	if width < 20 {
+		width = 20
+	}
+	cells := make([]string, width)
+	for i := range cells {
+		cells[i] = t.paint(colLine, "─")
+	}
+	// place the marks, later marks win a contested cell so the onset always shows
+	for _, m := range marks {
+		pos := 0
+		if span > 0 {
+			pos = int(float64(width-1) * float64(m.at.Sub(first)) / float64(span))
+		}
+		if pos < 0 {
+			pos = 0
+		}
+		if pos > width-1 {
+			pos = width - 1
+		}
+		cells[pos] = t.paint(sevColor(m.sev), m.glyph)
+	}
+	line := "  " + t.Muted(pad("timeline", 12)) + strings.Join(cells, "")
+	// the legend names the marks in time order, clipped to the width
+	var legend []string
+	for _, m := range marks {
+		legend = append(legend, m.glyph+" "+m.label)
+	}
+	leg := "  " + strings.Repeat(" ", 12) + t.Faint(cut(strings.Join(legend, "   "), width))
+	return []row{staticRow(line), staticRow(leg)}
 }
