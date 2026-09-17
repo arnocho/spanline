@@ -97,7 +97,11 @@ func Cast(d Data, l Loader, w, h int, script []Key) ([]CastFrame, error) {
 		apply(loadedMsg{data})
 		capture()
 	}
-	advance(stepEvery * time.Duration(len(m.steps)+3))
+	// let the reading screen finish on its own terms, however long it holds its last line
+	for i := 0; m.loading && i < 400; i++ {
+		advance(frameEvery)
+	}
+	advance(240 * time.Millisecond)
 
 	for _, k := range script {
 		if k.Press != "" {
